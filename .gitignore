@@ -1,10 +1,26 @@
+# Dependencies
 node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment files
 .env
 .env.*
 !.env.example
+client/.env
+client/.env.*
+!client/.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Build outputs
 dist/
+client/dist/
 build/
 coverage/
-.DS_Store
+
+# Logs & temp
 *.log
+.DS_Store
 .vscode/
