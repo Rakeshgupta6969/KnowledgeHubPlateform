@@ -1,14 +1,8 @@
 const ApiError = require('../utils/errors');
 
-const ROLE_HIERARCHY = {
-  OWNER: 3,
-  ADMIN: 2,
-  EDITOR: 1,
-};
-
 /**
- * Checks if user's membership has one of the allowed roles, or meets minimum role level.
- * @param {string[]|string} allowedRoles - e.g. ['OWNER', 'ADMIN'] or minimum role 'ADMIN'
+ * Checks if user's membership has one of the allowed roles.
+ * @param {string[]|string} allowedRoles - e.g. ['OWNER', 'ADMIN'] or 'ADMIN'
  */
 function roleMiddleware(allowedRoles) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
