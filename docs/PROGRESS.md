@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase B Completed** (Categories create/list/update/archive APIs and UI).
-- **Next task: Week 2, Phase C** (Articles CRUD APIs, draft/published/archived lifecycle, slug generation, cross-tenant category attachment prevention, pagination & predictable sorting).
+- Phase: **Week 2, Phase C Completed** (Articles CRUD APIs, draft/published/archived lifecycle, slug generation, cross-tenant category attachment prevention, pagination & predictable sorting).
+- **Next task: Week 2, Phase D** (Articles UI: editor form, list with filters and status badges, preview, safe rendering with XSS sanitization).
 
 ## Completed
+- **Week 2 Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
 - **Week 2 Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
 - **Week 2 Phase A (Dashboard Shell):** `DashboardLayout` with responsive collapsible sidebar, top navigation, dynamic tenant switcher (rendered conditionally only for users with >1 memberships), `OverviewPage`, `ProfilePage`, `SettingsPage` with branding updates, and backend `PATCH /api/v1/tenant/current` with RBAC enforcement (`OWNER`/`ADMIN`).
 - **Phase A (Setup & Infrastructure):** `/client` (React + Vite + Tailwind), `/server` (Express CommonJS), folder structures from PLAN.md section 7, environment variables, ESLint/Prettier, Docker Compose for PostgreSQL 16, working Prisma connection.
@@ -38,6 +39,23 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase C: Articles API, Lifecycle, State Transitions & Cross-Tenant Validation
+- What was built:
+  - `server/src/modules/articles/`: `article.validation.js`, `article.service.js`, `article.controller.js`, `article.routes.js`.
+  - Article CRUD APIs: `GET /api/v1/articles` (paginated list with `meta`, filters for status and category, predictable sorting), `POST /api/v1/articles` (create draft/published), `GET /api/v1/articles/:articleId` (detail with category & author), `PATCH /api/v1/articles/:articleId` (update), `POST /api/v1/articles/:articleId/publish` (explicit publish endpoint), `DELETE /api/v1/articles/:articleId` (archive/delete).
+  - Validated state transitions: `DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`; invalid transitions rejected with 400 `INVALID_STATUS_TRANSITION`.
+  - Multi-tenant category attachment validation: Rejects creating or updating an article with a `categoryId` that belongs to another tenant with 400 `INVALID_CATEGORY`.
+  - Automated tests: `server/tests/article.test.js` covering 15 test cases (CRUD, slug collision per tenant, role restrictions, publishing, status transitions, cross-tenant category attachment rejection, and negative cross-tenant isolation).
+- Files added/changed:
+  - `server/src/modules/articles/article.validation.js`, `server/src/modules/articles/article.service.js`, `server/src/modules/articles/article.controller.js`, `server/src/modules/articles/article.routes.js`, `server/src/routes/index.js`, `server/tests/article.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 51 passed tests across 4 test suites in Jest/Supertest suite (`npm test`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase B: Categories CRUD, Tenant Scoping & UI
 - What was built:
   - Database Schema & Migration: Added `Category` and `Article` models with `CategoryStatus` and `ArticleStatus` enums to `server/prisma/schema.prisma`. Applied migration `20261115091514_add_categories_and_articles` to dev and test databases.
