@@ -19,17 +19,41 @@ class AuditService {
     }
   }
 
-  async listLogs(tenantId, limit = 50) {
-    return prisma.auditLog.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(100, Math.max(1, limit)),
-      include: {
-        actor: {
-          select: { id: true, name: true, email: true },
+  async listLogs(tenantId, query = {}) {
+    // Support numeric limit directly or query object { page, limit }
+    const pageParam = typeof query === 'object' ? query.page : 1;
+    const limitParam = typeof query === 'object' ? query.limit : query;
+
+    const page = Math.max(1, parseInt(pageParam, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam, 10) || 50));
+    const skip = (page - 1) * limit;
+
+    const [total, logs] = await prisma.$transaction([
+      prisma.auditLog.count({ where: { tenantId } }),
+      prisma.auditLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          actor: {
+            select: { id: true, name: true, email: true },
+          },
         },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: logs,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
       },
-    });
+    };
   }
 }
 

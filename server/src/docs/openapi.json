@@ -1,0 +1,1270 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "KnowledgeHub REST API",
+    "version": "1.0.0",
+    "description": "Multi-Tenant Customer Support Knowledge Base SaaS API. Provides complete administrative content management, role-based access control, analytics, and public customer Help Center endpoints."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "API v1 Endpoint"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Short-lived JWT access token provided in Authorization header: `Bearer <token>`"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken",
+        "description": "HttpOnly SameSite refresh token cookie for session refresh/logout"
+      }
+    },
+    "schemas": {
+      "StandardError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "VALIDATION_ERROR" },
+              "message": { "type": "string", "example": "Invalid input provided" },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "required": ["code", "message"]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "example": 42 },
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 10 },
+          "totalPages": { "type": "integer", "example": 5 }
+        },
+        "required": ["total", "page", "limit", "totalPages"]
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Acme Corp" },
+          "slug": { "type": "string", "example": "acme" },
+          "logoUrl": { "type": "string", "nullable": true, "example": "https://example.com/logo.png" },
+          "primaryColor": { "type": "string", "nullable": true, "example": "#2563EB" },
+          "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"], "example": "ACTIVE" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Alice Smith" },
+          "email": { "type": "string", "format": "email", "example": "alice@acme.com" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Billing & Payments" },
+          "slug": { "type": "string", "example": "billing-payments" },
+          "description": { "type": "string", "nullable": true, "example": "Invoices, payment methods, and subscriptions" },
+          "sortOrder": { "type": "integer", "example": 1 },
+          "status": { "type": "string", "enum": ["ACTIVE", "ARCHIVED"], "example": "ACTIVE" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string", "example": "How to update credit card" },
+          "slug": { "type": "string", "example": "how-to-update-credit-card" },
+          "excerpt": { "type": "string", "nullable": true, "example": "Steps to update payment details safely" },
+          "content": { "type": "string", "example": "# Updating Payment Method\nNavigate to billing..." },
+          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "example": "PUBLISHED" },
+          "publishedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "author": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "action": { "type": "string", "example": "ARTICLE_PUBLISHED" },
+          "resourceType": { "type": "string", "example": "ARTICLE" },
+          "resourceId": { "type": "string", "format": "uuid" },
+          "details": { "type": "object", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "actor": { "$ref": "#/components/schemas/User" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Tenant Registration",
+        "description": "Atomically creates a new User, Tenant, and OWNER Membership in one database transaction.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "companyName": { "type": "string", "example": "Acme Corp" },
+                  "slug": { "type": "string", "example": "acme" },
+                  "name": { "type": "string", "example": "Alice Smith" },
+                  "email": { "type": "string", "format": "email", "example": "alice@acme.com" },
+                  "password": { "type": "string", "format": "password", "example": "StrongPass123!" }
+                },
+                "required": ["companyName", "slug", "name", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" },
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "membership": { "type": "object" },
+                    "accessToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "409": { "$ref": "#/components/responses/409ConflictError" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "User Login",
+        "description": "Authenticates user credentials. Returns short-lived access token and sets HttpOnly refresh cookie. Rate-limited to 10 attempts per 15 min.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "alice@acme.com" },
+                  "password": { "type": "string", "format": "password", "example": "StrongPass123!" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" },
+                    "memberships": { "type": "array", "items": { "type": "object" } },
+                    "accessToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401UnauthorizedError" },
+          "429": { "$ref": "#/components/responses/429RateLimitError" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh Access Token",
+        "description": "Issues a new access token using verified HttpOnly refreshToken cookie.",
+        "tags": ["Authentication"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "New access token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401UnauthorizedError" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "User Logout",
+        "description": "Revokes refresh session in database and clears refreshToken cookie.",
+        "tags": ["Authentication"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Logged out successfully" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Current User Profile",
+        "description": "Returns current authenticated user details and active tenant memberships.",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" },
+                    "memberships": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/401UnauthorizedError" }
+        }
+      }
+    },
+    "/tenant/current": {
+      "get": {
+        "summary": "Current Workspace Details",
+        "description": "Resolves workspace details and caller's membership from authenticated token and optional x-tenant-id header.",
+        "tags": ["Tenant Workspace"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current workspace details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "membership": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      },
+      "patch": {
+        "summary": "Update Workspace Settings",
+        "description": "Updates workspace branding name, logoUrl, or primaryColor. Requires OWNER or ADMIN role.",
+        "tags": ["Tenant Workspace"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "Acme Global" },
+                  "logoUrl": { "type": "string", "nullable": true },
+                  "primaryColor": { "type": "string", "nullable": true, "example": "#0284c7" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    },
+    "/tenant/members": {
+      "get": {
+        "summary": "List Workspace Team Members",
+        "description": "Lists all members of the active workspace with their roles and status.",
+        "tags": ["Tenant Workspace"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Team members list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenant/members/{memberId}": {
+      "patch": {
+        "summary": "Update Member Role",
+        "description": "Updates member role (ADMIN or EDITOR). Requires OWNER role.",
+        "tags": ["Tenant Workspace"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "memberId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": { "type": "string", "enum": ["ADMIN", "EDITOR"] }
+                },
+                "required": ["role"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member role updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "member": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    },
+    "/tenant/audit-logs": {
+      "get": {
+        "summary": "List Administrative Audit Logs",
+        "description": "Returns paginated audit logs for workspace administrative actions. Requires OWNER or ADMIN role.",
+        "tags": ["Tenant Workspace"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated audit logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditLog" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List Workspace Categories",
+        "description": "Lists categories scoped to active workspace. Supports status filtering.",
+        "tags": ["Categories"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "ARCHIVED", "ALL"], "default": "ACTIVE" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Category",
+        "description": "Creates a new category. Requires OWNER or ADMIN role.",
+        "tags": ["Categories"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "Getting Started" },
+                  "slug": { "type": "string", "example": "getting-started" },
+                  "description": { "type": "string", "nullable": true },
+                  "sortOrder": { "type": "integer", "default": 0 }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "409": { "$ref": "#/components/responses/409ConflictError" }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "summary": "Get Category by ID",
+        "description": "Reads category detail with article count. Scoped strictly to active workspace.",
+        "tags": ["Categories"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      },
+      "patch": {
+        "summary": "Update Category",
+        "description": "Updates category fields. Requires OWNER or ADMIN role.",
+        "tags": ["Categories"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "slug": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "sortOrder": { "type": "integer" },
+                  "status": { "type": "string", "enum": ["ACTIVE", "ARCHIVED"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      },
+      "delete": {
+        "summary": "Archive Category",
+        "description": "Soft deletes category by setting status to ARCHIVED. Requires OWNER or ADMIN role.",
+        "tags": ["Categories"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/articles": {
+      "get": {
+        "summary": "List Workspace Articles",
+        "description": "Returns paginated articles scoped to active workspace with status filters and predictable sorting.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED", "ALL"], "default": "ALL" } },
+          { "name": "categoryId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "example": "createdAt:desc" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated articles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Article" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Article",
+        "description": "Creates an article. EDITOR role can only create DRAFT articles; attempting to create with PUBLISHED directly returns 403.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string", "example": "Getting Started Guide" },
+                  "slug": { "type": "string", "example": "getting-started-guide" },
+                  "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+                  "excerpt": { "type": "string", "nullable": true },
+                  "content": { "type": "string", "example": "# Welcome to our platform..." },
+                  "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED"], "default": "DRAFT" }
+                },
+                "required": ["title", "content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Article created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" },
+          "409": { "$ref": "#/components/responses/409ConflictError" }
+        }
+      }
+    },
+    "/articles/{id}": {
+      "get": {
+        "summary": "Get Article by ID",
+        "description": "Returns full article detail with category and author. Scoped strictly to active workspace.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      },
+      "patch": {
+        "summary": "Update Article",
+        "description": "Updates article content or status. EDITOR cannot update status to PUBLISHED or ARCHIVED.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "slug": { "type": "string" },
+                  "categoryId": { "type": "string", "format": "uuid", "nullable": true },
+                  "excerpt": { "type": "string", "nullable": true },
+                  "content": { "type": "string" },
+                  "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Article updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      },
+      "delete": {
+        "summary": "Archive or Delete Article",
+        "description": "Archives article by default (soft delete). Pass ?permanent=true for hard delete. Requires OWNER or ADMIN role.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "permanent", "in": "query", "schema": { "type": "boolean", "default": false } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article deleted or archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/articles/{id}/publish": {
+      "post": {
+        "summary": "Publish Article",
+        "description": "Explicitly transitions article to PUBLISHED and sets publishedAt to current timestamp. Requires OWNER or ADMIN role.",
+        "tags": ["Articles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}": {
+      "get": {
+        "summary": "Public Help Center Configuration",
+        "description": "Returns public Help Center branding and metadata for active tenant. Cached in Redis for 1 hour.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string", "example": "acme" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public tenant configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/categories": {
+      "get": {
+        "summary": "Public Categories",
+        "description": "Returns active categories with count of published articles. Cached in Redis for 15 minutes.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string", "example": "acme" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public categories list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "categories": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/articles": {
+      "get": {
+        "summary": "Public Published Articles",
+        "description": "Returns paginated list of published articles only. Supports category filter.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string", "example": "acme" } },
+          { "name": "categorySlug", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated published articles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "category": { "type": "object", "nullable": true },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Article" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/articles/{slug}": {
+      "get": {
+        "summary": "Public Article Detail",
+        "description": "Returns full published article. CRITICAL: DRAFT or ARCHIVED articles return 404 to public visitors. Cached in Redis for 15 minutes.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string", "example": "acme" } },
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string", "example": "how-to-update-credit-card" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published article detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "article": { "$ref": "#/components/schemas/Article" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/search": {
+      "get": {
+        "summary": "PostgreSQL Full-Text Search",
+        "description": "Full-text search on published article title and content with relevance ranking. Rate-limited to 30 queries/min.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string", "example": "acme" } },
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 100 } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenant": { "$ref": "#/components/schemas/Tenant" },
+                    "query": { "type": "string" },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Article" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "429": { "$ref": "#/components/responses/429RateLimitError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/articles/{slug}/feedback": {
+      "post": {
+        "summary": "Submit Article Feedback",
+        "description": "Records helpful/unhelpful rating with optional comment. Abuse controlled with IP hashing and rate-limited to 15 submissions per 15 min.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "helpful": { "type": "boolean", "example": true },
+                  "comment": { "type": "string", "maxLength": 1000, "nullable": true, "example": "Clear instructions, thanks!" }
+                },
+                "required": ["helpful"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Feedback recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Thank you for your feedback!" },
+                    "feedback": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/400ValidationError" },
+          "404": { "$ref": "#/components/responses/404NotFoundError" },
+          "429": { "$ref": "#/components/responses/429RateLimitError" }
+        }
+      }
+    },
+    "/public/{tenantSlug}/articles/{slug}/view": {
+      "post": {
+        "summary": "Record Article View Event",
+        "description": "Records view event with bot filtering and daily session deduplication.",
+        "tags": ["Public Help Center"],
+        "parameters": [
+          { "name": "tenantSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "View event recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recorded": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/404NotFoundError" }
+        }
+      }
+    },
+    "/analytics/overview": {
+      "get": {
+        "summary": "Workspace Analytics Overview",
+        "description": "Returns aggregated views, feedback ratio, and total searches for active workspace. Requires OWNER or ADMIN role.",
+        "tags": ["Analytics"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "days", "in": "query", "schema": { "type": "integer", "enum": [7, 30, 90, 365], "default": 30 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated analytics metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "period": { "type": "object" },
+                    "metrics": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    },
+    "/analytics/articles": {
+      "get": {
+        "summary": "Top Performing Articles",
+        "description": "Returns top viewed articles with helpfulness statistics. Requires OWNER or ADMIN role.",
+        "tags": ["Analytics"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked articles list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "period": { "type": "object" },
+                    "data": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    },
+    "/analytics/searches": {
+      "get": {
+        "summary": "Search Analytics & Content Gaps",
+        "description": "Returns popular search terms and queries with 0 results. Requires OWNER or ADMIN role.",
+        "tags": ["Analytics"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search analytics queries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "period": { "type": "object" },
+                    "popularSearches": { "type": "array", "items": { "type": "object" } },
+                    "noResultSearches": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/403ForbiddenError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "400ValidationError": {
+        "description": "Validation error or invalid request parameters",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      },
+      "401UnauthorizedError": {
+        "description": "Missing, invalid, or expired authentication token",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      },
+      "403ForbiddenError": {
+        "description": "Insufficient permissions or unauthorized cross-tenant attempt",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      },
+      "404NotFoundError": {
+        "description": "Resource not found or private cross-tenant non-disclosing 404",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      },
+      "409ConflictError": {
+        "description": "Duplicate unique constraint violation (slug or email collision)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      },
+      "429RateLimitError": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/StandardError" }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken"
+      }
+    },
+    "schemas": {
+      "StandardError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "details": { "type": "array", "items": { "type": "object" } }
+            },
+            "required": ["code", "message"]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        },
+        "required": ["total", "page", "limit", "totalPages"]
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "logoUrl": { "type": "string", "nullable": true },
+          "primaryColor": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "sortOrder": { "type": "integer" },
+          "status": { "type": "string", "enum": ["ACTIVE", "ARCHIVED"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "excerpt": { "type": "string", "nullable": true },
+          "content": { "type": "string" },
+          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+          "publishedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "author": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "action": { "type": "string" },
+          "resourceType": { "type": "string" },
+          "resourceId": { "type": "string", "format": "uuid" },
+          "details": { "type": "object", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "actor": { "$ref": "#/components/schemas/User" }
+        }
+      }
+    }
+  }
+}

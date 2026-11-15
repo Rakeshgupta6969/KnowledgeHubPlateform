@@ -157,8 +157,8 @@ class TenantController {
 
   async getAuditLogs(req, res, next) {
     try {
-      const logs = await auditService.listLogs(req.tenant.id, 50);
-      res.status(200).json({ data: logs });
+      const result = await auditService.listLogs(req.tenant.id, req.query);
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }
