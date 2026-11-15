@@ -24,6 +24,8 @@ beforeEach(async () => {
 afterAll(async () => {
   await cleanDatabase();
   await prisma.$disconnect();
+  const cache = require('../src/config/redis');
+  await cache.disconnect();
 });
 
 module.exports = { cleanDatabase };

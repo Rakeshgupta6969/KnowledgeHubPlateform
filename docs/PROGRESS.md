@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase D Completed** (Tenant Analytics Dashboard UI with date filters, summary cards, sentiment gauge, and performance tables).
-- **Next task: Week 3 Phase E** (Redis caching layer for public tenant config, categories, and articles with resilient down-state fallback).
+- Phase: **Week 3 Phase E Completed** (Redis caching for public tenant config, categories, and articles with graceful fallback).
+- **Next task: Week 3 Phase F** (RBAC hardening and audit logging for publish, archive, and membership operations).
 
 ## Completed
+- **Phase E (Redis Caching Layer & Invalidation):** Added `redis:7-alpine` container (`knowledgehub-redis`) to Docker Compose on port 6379 with healthcheck. Created resilient cache client `server/src/config/redis.js` using `ioredis` with non-blocking error interception, offline queue suppression, and 100% database fallback when Redis is offline. Cached public tenant config (`tenant:<slug>`, 1hr TTL), category lists (`categories:<slug>`, 15m TTL), and published article reads (`article:<slug>:<slug>`, 15m TTL). Implemented automatic cache invalidation hooks on article changes, category changes, and branding updates. Added 6 automated tests in `tests/cache.test.js`.
 - **Phase D (Analytics Dashboard UI):** Built full-featured customer intelligence dashboard in `client/src/features/analytics/AnalyticsPage.jsx` with date range selectors (7d, 30d, 90d, 1y), KPI summary cards (Article Views, Search Queries, Helpfulness Score, Unanswered Searches), sentiment gauge breakdown, top articles ranking table, popular search terms table, and actionable zero-result queries with direct "Draft Article" links. Enforced server and client RBAC (`OWNER`/`ADMIN` only; informative lock state for `EDITOR`). Added navigation link in `DashboardLayout.jsx` and registered `/analytics` in `AppRoutes.jsx`.
 - **Phase C (Analytics Data Collection & Aggregation):** Built view collection endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with User-Agent bot filtering (identifying crawlers/bots) and daily session deduplication. Implemented backend `AnalyticsService` with multi-table aggregations for `GET /api/v1/analytics/overview` (views, searches, feedback ratio), `GET /api/v1/analytics/articles` (top articles by view and helpfulness count), and `GET /api/v1/analytics/searches` (popular searches and searches with no results). Enforced strict RBAC (`OWNER`/`ADMIN` only) and multi-tenant scoping. Added 9 automated tests in `tests/analytics.test.js`.
 - **Phase B (Article Feedback & Abuse Controls):** Added `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` accepting boolean `helpful` and optional 1000-char `comment`. Enforced strict tenant scoping, published-only article verification (drafts/archived/cross-tenant return 404), and anonymous SHA-256 IP hashing abuse prevention blocking rapid spam with 429 `FEEDBACK_ALREADY_SUBMITTED`. Integrated interactive feedback widget in `PublicArticleDetailPage.jsx` with rating buttons, optional comment form, thank you state, and localStorage persistence. Added 8 automated tests in `tests/feedback.test.js`.
@@ -52,6 +53,24 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase E: Redis Caching Layer & Invalidation
+- What was built:
+  - Added Redis 7 container `knowledgehub-redis` in `docker-compose.yml` on port 6379 with healthcheck and persistent volume `redis_data`.
+  - Configured `REDIS_URL=redis://localhost:6379` in root `.env.example`, `server/.env.example`, `server/.env`, and `server/src/config/environment.js`.
+  - Built resilient cache module `server/src/config/redis.js` with `ioredis` featuring lazy connect, reconnect strategy, error suppression, and automatic database fallback when Redis is unreachable.
+  - Cached public endpoints: `GET /api/v1/public/:tenantSlug` (1 hour), `GET /api/v1/public/:tenantSlug/categories` (15 mins), `GET /api/v1/public/:tenantSlug/articles/:articleSlug` (15 mins). All cache keys scoped by tenant identity.
+  - Automatic cache invalidation on content changes in `article.service.js`, `category.service.js`, and `tenant.controller.js`.
+  - Automated tests in `server/tests/cache.test.js` covering cache hits, content invalidation, tenant key scoping, and resilient offline fallback.
+- Files added/changed:
+  - `docker-compose.yml`, `.env.example`, `server/.env.example`, `server/.env`, `server/package.json`, `server/src/config/environment.js`, `server/src/config/redis.js`, `server/src/modules/public/public.service.js`, `server/src/modules/categories/category.service.js`, `server/src/modules/articles/article.service.js`, `server/src/modules/tenants/tenant.controller.js`, `server/tests/setup.js`, `server/tests/cache.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - All 94 backend tests passing (`npm test`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - Installed `ioredis` to satisfy Week 3 Redis caching specification with resilient offline fallback.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase D: Analytics Dashboard UI & Insights
 - What was built:
   - `client/src/features/analytics/AnalyticsPage.jsx`: Interactive analytics dashboard with date range filter pills (7d, 30d, 90d, 1y), KPI summary cards, sentiment bar gauge, top performing articles table with satisfaction percentages, popular search terms table, and unanswered searches table with quick article creation CTAs.

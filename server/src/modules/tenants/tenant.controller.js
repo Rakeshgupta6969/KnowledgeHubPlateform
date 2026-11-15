@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const cache = require('../../config/redis');
 
 class TenantController {
   async getCurrent(req, res, next) {
@@ -39,6 +40,9 @@ class TenantController {
         where: { id: req.tenant.id },
         data: dataToUpdate,
       });
+
+      // Invalidate public tenant config cache
+      await cache.invalidateTenant(req.tenant.slug);
 
       res.status(200).json({
         tenant: {

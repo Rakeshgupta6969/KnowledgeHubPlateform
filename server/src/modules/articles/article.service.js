@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const cache = require('../../config/redis');
 const ApiError = require('../../utils/errors');
 const slugify = require('../../utils/slugify');
 
@@ -146,6 +147,7 @@ class ArticleService {
       },
     });
 
+    await this.invalidateTenantArticle(tenantId, article.slug);
     return article;
   }
 
@@ -220,6 +222,10 @@ class ArticleService {
       },
     });
 
+    await this.invalidateTenantArticle(tenantId, updated.slug);
+    if (existing.slug !== updated.slug) {
+      await this.invalidateTenantArticle(tenantId, existing.slug);
+    }
     return updated;
   }
 
@@ -263,14 +269,19 @@ class ArticleService {
       },
     });
 
+    await this.invalidateTenantArticle(tenantId, updated.slug);
+    if (existing.slug !== updated.slug) {
+      await this.invalidateTenantArticle(tenantId, existing.slug);
+    }
     return updated;
   }
 
   async deleteArticle(tenantId, articleId, permanent = false) {
-    await this.getArticleById(tenantId, articleId);
+    const existing = await this.getArticleById(tenantId, articleId);
 
     if (permanent) {
       await prisma.article.delete({ where: { id: articleId } });
+      await this.invalidateTenantArticle(tenantId, existing.slug);
       return { message: 'Article permanently deleted' };
     }
 
@@ -287,7 +298,22 @@ class ArticleService {
       },
     });
 
+    await this.invalidateTenantArticle(tenantId, existing.slug);
     return { message: 'Article archived successfully', article: updated };
+  }
+
+  async invalidateTenantArticle(tenantId, articleSlug) {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { slug: true },
+      });
+      if (tenant?.slug) {
+        await cache.invalidateArticle(tenant.slug, articleSlug);
+      }
+    } catch (err) {
+      console.warn('Failed to invalidate article cache:', err.message);
+    }
   }
 }
 

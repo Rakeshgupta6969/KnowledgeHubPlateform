@@ -1,12 +1,19 @@
 const crypto = require('crypto');
 const { Prisma } = require('@prisma/client');
 const prisma = require('../../config/prisma');
+const cache = require('../../config/redis');
 const ApiError = require('../../utils/errors');
 
 class PublicService {
   async getPublicTenant(tenantSlug) {
     if (!tenantSlug) {
       throw ApiError.badRequest('Tenant slug is required', 'SLUG_REQUIRED');
+    }
+
+    const cacheKey = cache.keys.tenant(tenantSlug);
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -25,10 +32,17 @@ class PublicService {
       throw ApiError.notFound('Help Center not found', 'TENANT_NOT_FOUND');
     }
 
+    await cache.set(cacheKey, tenant, 3600); // 1 hour TTL
     return tenant;
   }
 
   async getPublicCategories(tenantSlug) {
+    const cacheKey = cache.keys.categories(tenantSlug);
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const tenant = await this.getPublicTenant(tenantSlug);
 
     const categories = await prisma.category.findMany({
@@ -53,10 +67,13 @@ class PublicService {
       },
     });
 
-    return {
+    const result = {
       tenant,
       categories,
     };
+
+    await cache.set(cacheKey, result, 900); // 15 min TTL
+    return result;
   }
 
   async getPublicArticles(tenantSlug, query = {}) {
@@ -135,11 +152,17 @@ class PublicService {
   }
 
   async getPublicArticleBySlug(tenantSlug, articleSlug) {
-    const tenant = await this.getPublicTenant(tenantSlug);
-
     if (!articleSlug) {
       throw ApiError.badRequest('Article slug is required', 'SLUG_REQUIRED');
     }
+
+    const cacheKey = cache.keys.article(tenantSlug, articleSlug);
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const tenant = await this.getPublicTenant(tenantSlug);
 
     const article = await prisma.article.findUnique({
       where: {
@@ -172,10 +195,13 @@ class PublicService {
       throw ApiError.notFound('Article not found', 'ARTICLE_NOT_FOUND');
     }
 
-    return {
+    const result = {
       tenant,
       article,
     };
+
+    await cache.set(cacheKey, result, 900); // 15 min TTL
+    return result;
   }
 
   async searchPublicArticles(tenantSlug, queryParams = {}) {

@@ -13,6 +13,7 @@ const config = {
   accessTokenExpiry: '15m',
   refreshTokenExpiry: '7d',
   clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 };
 
 module.exports = config;

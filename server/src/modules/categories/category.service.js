@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const cache = require('../../config/redis');
 const ApiError = require('../../utils/errors');
 const slugify = require('../../utils/slugify');
 
@@ -77,6 +78,7 @@ class CategoryService {
       },
     });
 
+    await this.invalidateTenantCategories(tenantId);
     return category;
   }
 
@@ -120,6 +122,7 @@ class CategoryService {
       },
     });
 
+    await this.invalidateTenantCategories(tenantId);
     return updated;
   }
 
@@ -137,7 +140,22 @@ class CategoryService {
       },
     });
 
+    await this.invalidateTenantCategories(tenantId);
     return updated;
+  }
+
+  async invalidateTenantCategories(tenantId) {
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { slug: true },
+      });
+      if (tenant?.slug) {
+        await cache.invalidateCategories(tenant.slug);
+      }
+    } catch (err) {
+      console.warn('Failed to invalidate category cache:', err.message);
+    }
   }
 }
 
