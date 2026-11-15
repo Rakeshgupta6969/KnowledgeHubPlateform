@@ -5,6 +5,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgr
 const prisma = require('../src/config/prisma');
 
 async function cleanDatabase() {
+  await prisma.article.deleteMany({});
+  await prisma.category.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.membership.deleteMany({});
   await prisma.user.deleteMany({});

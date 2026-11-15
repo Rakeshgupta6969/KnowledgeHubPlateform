@@ -8,6 +8,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import OverviewPage from '../features/tenant/OverviewPage';
 import ProfilePage from '../features/tenant/ProfilePage';
 import SettingsPage from '../features/tenant/SettingsPage';
+import CategoriesPage from '../features/categories/CategoriesPage';
 
 export default function AppRoutes() {
   return (
@@ -42,10 +43,7 @@ export default function AppRoutes() {
         <Route index element={<OverviewPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route
-          path="categories"
-          element={<div className="p-8 text-gray-500">Categories management loading...</div>}
-        />
+        <Route path="categories" element={<CategoriesPage />} />
         <Route
           path="articles"
           element={<div className="p-8 text-gray-500">Articles management loading...</div>}

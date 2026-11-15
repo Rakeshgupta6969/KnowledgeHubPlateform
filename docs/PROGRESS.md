@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase A Completed** (Dashboard shell, sidebar, tenant switcher, profile & settings pages).
-- **Next task: Week 2, Phase B** (Categories create/list/update/archive APIs and UI).
+- Phase: **Week 2, Phase B Completed** (Categories create/list/update/archive APIs and UI).
+- **Next task: Week 2, Phase C** (Articles CRUD APIs, draft/published/archived lifecycle, slug generation, cross-tenant category attachment prevention, pagination & predictable sorting).
 
 ## Completed
+- **Week 2 Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
 - **Week 2 Phase A (Dashboard Shell):** `DashboardLayout` with responsive collapsible sidebar, top navigation, dynamic tenant switcher (rendered conditionally only for users with >1 memberships), `OverviewPage`, `ProfilePage`, `SettingsPage` with branding updates, and backend `PATCH /api/v1/tenant/current` with RBAC enforcement (`OWNER`/`ADMIN`).
 - **Phase A (Setup & Infrastructure):** `/client` (React + Vite + Tailwind), `/server` (Express CommonJS), folder structures from PLAN.md section 7, environment variables, ESLint/Prettier, Docker Compose for PostgreSQL 16, working Prisma connection.
 - **Phase B (Database Models & Seed):** Prisma schema for `Tenant`, `User`, `Membership`, and `RefreshToken` per PLAN.md section 4. Migration applied to dev and test databases. Seed script generating Acme Corp and Globex Corporation.
@@ -37,6 +38,26 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase B: Categories CRUD, Tenant Scoping & UI
+- What was built:
+  - Database Schema & Migration: Added `Category` and `Article` models with `CategoryStatus` and `ArticleStatus` enums to `server/prisma/schema.prisma`. Applied migration `20261115091514_add_categories_and_articles` to dev and test databases.
+  - `server/src/modules/categories/`: `category.validation.js`, `category.service.js`, `category.controller.js`, `category.routes.js`.
+  - Category APIs: `GET /api/v1/categories`, `POST /api/v1/categories`, `GET /api/v1/categories/:categoryId`, `PATCH /api/v1/categories/:categoryId`, `DELETE /api/v1/categories/:categoryId` (archive).
+  - RBAC: `OWNER` and `ADMIN` can create, update, and archive categories. `EDITOR` can view list and detail.
+  - Multi-tenant scoping: Category queries strictly scoped to `req.tenant.id`. Slugs unique per `(tenantId, slug)`.
+  - `client/src/features/categories/CategoriesPage.jsx`: Interactive category management UI with status filter tabs (`ALL`, `ACTIVE`, `ARCHIVED`), create/edit modal with validation, archive confirmation dialog, empty state, and loading skeleton.
+  - Automated tests: `server/tests/category.test.js` covering happy path, validation, duplicate slug per tenant, cross-tenant isolation (Tenant B cannot read, update, or archive Tenant A's categories).
+- Files added/changed:
+  - `server/prisma/schema.prisma`, `server/prisma/migrations/20261115091514_add_categories_and_articles/migration.sql`, `server/tests/setup.js`, `server/src/modules/categories/`, `server/src/routes/index.js`, `client/src/features/categories/CategoriesPage.jsx`, `client/src/app/AppRoutes.jsx`, `server/tests/category.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 36 passed tests across 3 suites in Jest/Supertest suite (`npm test`).
+  - Client production build passed (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase A: Dashboard Shell, Sidebar, Switcher, Profile & Settings
 - What was built:
   - `client/src/layouts/DashboardLayout.jsx`: Responsive layout with sidebar navigation, active workspace card, public portal link, user badge, and tenant switcher shown only when `memberships.length > 1`.

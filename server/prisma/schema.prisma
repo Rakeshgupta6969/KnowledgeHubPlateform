@@ -30,6 +30,17 @@ enum MembershipStatus {
   INACTIVE
 }
 
+enum CategoryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model Tenant {
   id           String        @id @default(uuid()) @db.Uuid
   name         String        @db.VarChar(255)
@@ -41,6 +52,8 @@ model Tenant {
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   memberships  Membership[]
+  categories   Category[]
+  articles     Article[]
 
   @@map("tenants")
 }
@@ -56,6 +69,7 @@ model User {
 
   memberships   Membership[]
   refreshTokens RefreshToken[]
+  articles      Article[]
 
   @@map("users")
 }
@@ -90,4 +104,47 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model Category {
+  id          String         @id @default(uuid()) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  name        String         @db.VarChar(255)
+  slug        String         @db.VarChar(100)
+  description String?        @db.Text
+  sortOrder   Int            @default(0) @map("sort_order")
+  status      CategoryStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  articles Article[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("categories")
+}
+
+model Article {
+  id          String        @id @default(uuid()) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  categoryId  String?       @map("category_id") @db.Uuid
+  authorId    String        @map("author_id") @db.Uuid
+  title       String        @db.VarChar(255)
+  slug        String        @db.VarChar(100)
+  excerpt     String?       @db.Text
+  content     String        @db.Text
+  status      ArticleStatus @default(DRAFT)
+  publishedAt DateTime?     @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, publishedAt])
+  @@index([tenantId, categoryId])
+  @@map("articles")
 }
