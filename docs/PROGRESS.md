@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 1 (Days 2–7) Fully Completed**.
-- **Next task: Week 2, Day 8** (Tenant Dashboard shell, sidebar, tenant switcher, profile, and settings pages).
+- Phase: **Week 2, Phase A Completed** (Dashboard shell, sidebar, tenant switcher, profile & settings pages).
+- **Next task: Week 2, Phase B** (Categories create/list/update/archive APIs and UI).
 
 ## Completed
+- **Week 2 Phase A (Dashboard Shell):** `DashboardLayout` with responsive collapsible sidebar, top navigation, dynamic tenant switcher (rendered conditionally only for users with >1 memberships), `OverviewPage`, `ProfilePage`, `SettingsPage` with branding updates, and backend `PATCH /api/v1/tenant/current` with RBAC enforcement (`OWNER`/`ADMIN`).
 - **Phase A (Setup & Infrastructure):** `/client` (React + Vite + Tailwind), `/server` (Express CommonJS), folder structures from PLAN.md section 7, environment variables, ESLint/Prettier, Docker Compose for PostgreSQL 16, working Prisma connection.
 - **Phase B (Database Models & Seed):** Prisma schema for `Tenant`, `User`, `Membership`, and `RefreshToken` per PLAN.md section 4. Migration applied to dev and test databases. Seed script generating Acme Corp and Globex Corporation.
 - **Phase C (Auth APIs):** Atomic registration (`Tenant` + `User` + `Membership` in one `prisma.$transaction`), login with generic errors, refresh token via HttpOnly cookie & DB session check, logout with session revocation, `GET /auth/me`.
@@ -36,6 +37,25 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase A: Dashboard Shell, Sidebar, Switcher, Profile & Settings
+- What was built:
+  - `client/src/layouts/DashboardLayout.jsx`: Responsive layout with sidebar navigation, active workspace card, public portal link, user badge, and tenant switcher shown only when `memberships.length > 1`.
+  - `client/src/features/tenant/OverviewPage.jsx`: Main dashboard overview with quick action links to Articles, Categories, and Public Help Center.
+  - `client/src/features/tenant/ProfilePage.jsx`: Detailed user profile with memberships list and one-click workspace switching.
+  - `client/src/features/tenant/SettingsPage.jsx`: Workspace settings page with branding update form for `OWNER` / `ADMIN` roles.
+  - `server/src/modules/tenants/tenant.validation.js` & `PATCH /api/v1/tenant/current`: Allows Owners and Admins to update workspace name, logoUrl, and primaryColor with Zod validation.
+  - Automated tests added to `server/tests/tenant.test.js` covering `PATCH /api/v1/tenant/current` permissions and validation.
+- Files added/changed:
+  - `client/src/layouts/DashboardLayout.jsx`, `client/src/features/tenant/OverviewPage.jsx`, `client/src/features/tenant/ProfilePage.jsx`, `client/src/features/tenant/SettingsPage.jsx`, `client/src/app/AppRoutes.jsx`, `server/src/modules/tenants/tenant.validation.js`, `server/src/modules/tenants/tenant.controller.js`, `server/src/modules/tenants/tenant.routes.js`, `server/tests/tenant.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 23 passed tests in Jest/Supertest suite (`npm test`).
+  - Client production build passed with 0 errors (`npm run build`).
+  - ESLint passed with 0 errors (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 1 Phase F: Wrap-up, Documentation & Checklist Verification
 - What was built:
   - Verified Week 1 checklist in PLAN.md: all 7 checklist criteria satisfied.

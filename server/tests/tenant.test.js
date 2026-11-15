@@ -151,4 +151,60 @@ describe('Tenant Context & Isolation APIs (/api/v1/tenant)', () => {
       expect(resSwitched.body.membership.role).toBe('EDITOR');
     });
   });
+
+  describe('PATCH /api/v1/tenant/current', () => {
+    it('allows OWNER to update workspace name and primary color', async () => {
+      const res = await request(app)
+        .patch('/api/v1/tenant/current')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          name: 'Company Alpha Renamed',
+          primaryColor: '#6366F1',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.tenant.name).toBe('Company Alpha Renamed');
+      expect(res.body.tenant.primaryColor).toBe('#6366F1');
+      expect(res.body.tenant.id).toBe(tenantA.id);
+    });
+
+    it('rejects EDITOR with 403 FORBIDDEN', async () => {
+      // Add editor to Tenant A
+      const editorUser = await prisma.user.create({
+        data: {
+          name: 'Ed Editor',
+          email: 'ed@alpha.com',
+          passwordHash: 'hash',
+        },
+      });
+      await prisma.membership.create({
+        data: {
+          tenantId: tenantA.id,
+          userId: editorUser.id,
+          role: 'EDITOR',
+          status: 'ACTIVE',
+        },
+      });
+      const { generateAccessToken } = require('../src/utils/tokens');
+      const editorToken = generateAccessToken({ userId: editorUser.id, email: editorUser.email });
+
+      const res = await request(app)
+        .patch('/api/v1/tenant/current')
+        .set('Authorization', `Bearer ${editorToken}`)
+        .send({ name: 'Hacked Name' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('validates input and rejects empty/short name with 400 VALIDATION_ERROR', async () => {
+      const res = await request(app)
+        .patch('/api/v1/tenant/current')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ name: 'A' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
 });
