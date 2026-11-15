@@ -40,9 +40,40 @@ app.use(
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+const prisma = require('./config/prisma');
+const cache = require('./config/redis');
+
+// Production Health & Readiness check endpoint (/health and /api/v1/health)
+app.get(['/health', '/api/v1/health'], async (req, res) => {
+  let dbStatus = 'down';
+  let redisStatus = 'down';
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbStatus = 'up';
+  } catch {
+    dbStatus = 'down';
+  }
+
+  redisStatus = cache.isAvailable() ? 'up' : 'down';
+
+  const isHealthy = dbStatus === 'up';
+  const statusCode = isHealthy ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: isHealthy ? (redisStatus === 'up' ? 'ok' : 'degraded') : 'down',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    services: {
+      database: dbStatus,
+      redis: redisStatus,
+    },
+    version: '1.0.0',
+    memory: {
+      usedRssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heapUsedMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
+  });
 });
 
 // OpenAPI/Swagger Documentation

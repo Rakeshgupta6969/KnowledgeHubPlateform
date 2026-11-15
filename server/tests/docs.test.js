@@ -18,4 +18,16 @@ describe('API Documentation (/api/v1/docs)', () => {
     expect(res.body.paths['/articles']).toBeDefined();
     expect(res.body.paths['/public/{tenantSlug}/search']).toBeDefined();
   });
+
+  it('provides comprehensive health check at /health and /api/v1/health', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toMatch(/ok|degraded/);
+    expect(res.body.services.database).toBe('up');
+    expect(res.body.uptime).toBeDefined();
+
+    const resV1 = await request(app).get('/api/v1/health');
+    expect(resV1.status).toBe(200);
+    expect(resV1.body.services.database).toBe('up');
+  });
 });
