@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase F Completed** (RBAC hardening and audit logging for publish, archive, and membership operations).
-- **Next task: Week 3 Phase G** (Rate limiting on login, search, and feedback).
+- Phase: **Week 3 Phase G Completed** (Rate limiting on login, search, and feedback).
+- **Next task: Week 3 Phase H** (Full integration test suite, Week 3 checklist verification, documentation updates).
 
 ## Completed
+- **Phase G (Rate Limiting on Login, Search, and Feedback):** Installed `express-rate-limit` and configured strict rate limiting middleware (`server/src/middleware/rateLimit.js`): 10 login attempts per 15 minutes, 30 search queries per minute, and 15 feedback submissions per 15 minutes. Configured standard 429 response structure `{ error: { code: '..._RATE_LIMIT_EXCEEDED', message: '...' } }`. Configured `trust proxy` in `app.js` and automated test suite in `tests/ratelimit.test.js`.
 - **Phase F (RBAC Hardening & Administrative Audit Logging):** Hardened role permissions across all routes. Enforced that Editors can only create and edit `DRAFT` articles, rejecting attempts to publish or archive via create/update with 403 `ROLE_NOT_AUTHORIZED`. Added workspace member management endpoints (`GET /api/v1/tenant/members`, `PATCH /api/v1/tenant/members/:memberId`) allowing Owners to manage member roles. Created `AuditService` (`server/src/modules/audit/audit.service.js`) and administrative audit endpoint `GET /api/v1/tenant/audit-logs` recording audit logs on article publish/archive/deletion, category archiving, workspace settings updates, and member role changes. Added 9 automated tests in `tests/rbac.test.js`.
 - **Phase E (Redis Caching Layer & Invalidation):** Added `redis:7-alpine` container (`knowledgehub-redis`) to Docker Compose on port 6379 with healthcheck. Created resilient cache client `server/src/config/redis.js` using `ioredis` with non-blocking error interception, offline queue suppression, and 100% database fallback when Redis is offline. Cached public tenant config (`tenant:<slug>`, 1hr TTL), category lists (`categories:<slug>`, 15m TTL), and published article reads (`article:<slug>:<slug>`, 15m TTL). Implemented automatic cache invalidation hooks on article changes, category changes, and branding updates. Added 6 automated tests in `tests/cache.test.js`.
 - **Phase D (Analytics Dashboard UI):** Built full-featured customer intelligence dashboard in `client/src/features/analytics/AnalyticsPage.jsx` with date range selectors (7d, 30d, 90d, 1y), KPI summary cards (Article Views, Search Queries, Helpfulness Score, Unanswered Searches), sentiment gauge breakdown, top articles ranking table, popular search terms table, and actionable zero-result queries with direct "Draft Article" links. Enforced server and client RBAC (`OWNER`/`ADMIN` only; informative lock state for `EDITOR`). Added navigation link in `DashboardLayout.jsx` and registered `/analytics` in `AppRoutes.jsx`.
@@ -54,6 +55,24 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase G: Rate Limiting on Login, Search, and Feedback
+- What was built:
+  - Installed `express-rate-limit` in `server` package.
+  - Implemented rate limiting middleware `server/src/middleware/rateLimit.js` creating `loginLimiter` (10 per 15 min), `searchLimiter` (30 per min), and `feedbackLimiter` (15 per 15 min).
+  - Applied rate limiters to `POST /api/v1/auth/login`, `GET /api/v1/public/:tenantSlug/search`, and `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback`.
+  - Configured `trust proxy` in `app.js` and ensured standard 429 error formatting.
+  - Updated test setup to flush Redis cache keys on clean database.
+  - Added automated tests in `server/tests/ratelimit.test.js` validating HTTP 429 responses on login, search, and feedback exhaustion.
+- Files added/changed:
+  - `server/package.json`, `server/package-lock.json`, `server/src/app.js`, `server/src/middleware/rateLimit.js`, `server/src/modules/auth/auth.routes.js`, `server/src/modules/public/public.routes.js`, `server/tests/setup.js`, `server/tests/ratelimit.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 106 passed tests across 11 test suites in Jest/Supertest suite (`npm test`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - Installed `express-rate-limit` to provide standardized IP-based sliding window rate limiting.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase F: RBAC Hardening & Administrative Audit Logging
 - What was built:
   - Role enforcement hardening on article creation and update: explicitly blocked `EDITOR` role from creating pre-published articles or changing status to `PUBLISHED` / `ARCHIVED`, returning 403 `ROLE_NOT_AUTHORIZED`.

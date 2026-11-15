@@ -1,5 +1,6 @@
 const express = require('express');
 const publicController = require('./public.controller');
+const { searchLimiter, feedbackLimiter } = require('../../middleware/rateLimit');
 
 const router = express.Router({ mergeParams: true });
 
@@ -7,7 +8,7 @@ const router = express.Router({ mergeParams: true });
 router.get('/:tenantSlug', publicController.getTenantConfig);
 
 // GET /api/v1/public/:tenantSlug/search - Search published articles
-router.get('/:tenantSlug/search', publicController.searchArticles);
+router.get('/:tenantSlug/search', searchLimiter, publicController.searchArticles);
 
 // GET /api/v1/public/:tenantSlug/categories - Public category list with published counts
 router.get('/:tenantSlug/categories', publicController.getCategories);
@@ -19,7 +20,11 @@ router.get('/:tenantSlug/articles', publicController.getArticles);
 router.get('/:tenantSlug/articles/:articleSlug', publicController.getArticleBySlug);
 
 // POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback - Submit helpful feedback
-router.post('/:tenantSlug/articles/:articleSlug/feedback', publicController.submitFeedback);
+router.post(
+  '/:tenantSlug/articles/:articleSlug/feedback',
+  feedbackLimiter,
+  publicController.submitFeedback
+);
 
 // POST /api/v1/public/:tenantSlug/articles/:articleSlug/view - Record article view
 router.post('/:tenantSlug/articles/:articleSlug/view', publicController.recordView);

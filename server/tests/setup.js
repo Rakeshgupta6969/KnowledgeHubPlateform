@@ -3,6 +3,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/knowledgehub_test?schema=public';
 
 const prisma = require('../src/config/prisma');
+const cache = require('../src/config/redis');
 
 async function cleanDatabase() {
   await prisma.auditLog.deleteMany({});
@@ -15,6 +16,10 @@ async function cleanDatabase() {
   await prisma.membership.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.tenant.deleteMany({});
+
+  if (cache.isAvailable()) {
+    await cache.delPattern('*');
+  }
 }
 
 beforeEach(async () => {
