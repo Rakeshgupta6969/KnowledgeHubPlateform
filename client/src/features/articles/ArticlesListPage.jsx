@@ -3,27 +3,23 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { apiRequest } from '../../lib/api';
 import SafeContent from '../../components/SafeContent';
+import Pagination from '../../components/Pagination';
 import {
   FileText,
   Plus,
   Pencil,
   Eye,
-  CheckCircle2,
   Archive,
-  RefreshCw,
   Search,
-  Filter,
   AlertCircle,
   X,
-  ChevronLeft,
-  ChevronRight,
   Globe,
-  Clock,
-  User,
+  ArrowUpDown,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function ArticlesListPage() {
-  const { currentMembership, currentTenant } = useAuth();
+  const { currentMembership } = useAuth();
   const navigate = useNavigate();
   const canPublishOrArchive =
     currentMembership?.role === 'OWNER' || currentMembership?.role === 'ADMIN';
@@ -34,9 +30,10 @@ export default function ArticlesListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters
+  // Filters & Sorting
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt:desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
 
@@ -59,6 +56,7 @@ export default function ArticlesListPage() {
       const params = new URLSearchParams();
       params.set('page', page);
       params.set('limit', 10);
+      params.set('sort', sortBy);
       if (statusFilter !== 'ALL') params.set('status', statusFilter);
       if (categoryFilter) params.set('categoryId', categoryFilter);
       if (searchTerm.trim()) params.set('search', searchTerm.trim());
@@ -79,7 +77,7 @@ export default function ArticlesListPage() {
 
   useEffect(() => {
     fetchArticles();
-  }, [statusFilter, categoryFilter, page]);
+  }, [statusFilter, categoryFilter, sortBy, page]);
 
   function handleSearchSubmit(e) {
     e.preventDefault();
@@ -136,13 +134,15 @@ export default function ArticlesListPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Status Tabs */}
-          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50" role="tablist">
             {['ALL', 'DRAFT', 'PUBLISHED', 'ARCHIVED'].map((st) => (
               <button
                 key={st}
+                role="tab"
+                aria-selected={statusFilter === st}
                 onClick={() => {
                   setStatusFilter(st);
                   setPage(1);
@@ -165,6 +165,7 @@ export default function ArticlesListPage() {
               setCategoryFilter(e.target.value);
               setPage(1);
             }}
+            aria-label="Filter by category"
             className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">All Categories</option>
@@ -174,25 +175,46 @@ export default function ArticlesListPage() {
               </option>
             ))}
           </select>
+
+          {/* Sorting Dropdown */}
+          <div className="flex items-center gap-1.5">
+            <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
+              aria-label="Sort articles"
+              className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value="createdAt:desc">Newest First</option>
+              <option value="createdAt:asc">Oldest First</option>
+              <option value="title:asc">Title (A-Z)</option>
+              <option value="title:desc">Title (Z-A)</option>
+              <option value="updatedAt:desc">Recently Updated</option>
+            </select>
+          </div>
         </div>
 
         {/* Search Input */}
         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
             <input
               type="text"
               placeholder="Search articles..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-xs pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg w-44 sm:w-56 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              aria-label="Search articles by title"
+              className="text-xs pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg w-full sm:w-56 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
           <button
             type="submit"
             className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors"
           >
-            Filter
+            Search
           </button>
         </form>
       </div>
@@ -296,6 +318,7 @@ export default function ArticlesListPage() {
                         onClick={() => setPreviewArticle(art)}
                         className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                         title="Preview Article"
+                        aria-label={`Preview ${art.title}`}
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -305,6 +328,7 @@ export default function ArticlesListPage() {
                         onClick={() => navigate(`/articles/${art.id}/edit`)}
                         className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
                         title="Edit Article"
+                        aria-label={`Edit ${art.title}`}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -315,6 +339,7 @@ export default function ArticlesListPage() {
                           onClick={() => handlePublish(art.id)}
                           className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
                           title="Publish Article"
+                          aria-label={`Publish ${art.title}`}
                         >
                           <Globe className="w-3.5 h-3.5" />
                         </button>
@@ -326,6 +351,7 @@ export default function ArticlesListPage() {
                           onClick={() => handleArchive(art.id)}
                           className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
                           title="Archive Article"
+                          aria-label={`Archive ${art.title}`}
                         >
                           <Archive className="w-3.5 h-3.5" />
                         </button>
@@ -337,49 +363,38 @@ export default function ArticlesListPage() {
             </table>
           </div>
 
-          {/* Pagination Footer */}
-          {meta.totalPages > 1 && (
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-slate-50/50 text-xs text-gray-600">
-              <span>
-                Showing page <strong className="font-semibold text-gray-900">{meta.page}</strong> of{' '}
-                <strong className="font-semibold text-gray-900">{meta.totalPages}</strong> ({meta.total} total)
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="p-1.5 border border-gray-200 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                  disabled={page >= meta.totalPages}
-                  className="p-1.5 border border-gray-200 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Accessible Reusable Pagination */}
+          <Pagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            total={meta.total}
+            limit={meta.limit}
+            onPageChange={(newPage) => setPage(newPage)}
+          />
         </div>
       )}
 
       {/* Preview Modal */}
       {previewArticle && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-modal-title"
+        >
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                   Preview
                 </span>
-                <h3 className="text-sm font-bold text-gray-900 truncate">
+                <h3 id="preview-modal-title" className="text-sm font-bold text-gray-900 truncate">
                   {previewArticle.title}
                 </h3>
               </div>
               <button
                 onClick={() => setPreviewArticle(null)}
+                aria-label="Close preview modal"
                 className="p-1 text-gray-400 hover:text-gray-600 rounded"
               >
                 <X className="w-5 h-5" />

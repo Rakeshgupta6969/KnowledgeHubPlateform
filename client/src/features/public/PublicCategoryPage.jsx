@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { apiRequest } from '../../lib/api';
+import Pagination from '../../components/Pagination';
 import {
   ChevronRight,
   FolderTree,
@@ -16,6 +17,7 @@ export default function PublicCategoryPage() {
 
   const [category, setCategory] = useState(null);
   const [articles, setArticles] = useState([]);
+  const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,7 +28,7 @@ export default function PublicCategoryPage() {
       setError(null);
       try {
         const res = await apiRequest(
-          `/api/v1/public/${tenantSlug}/articles?categorySlug=${categorySlug}`
+          `/api/v1/public/${tenantSlug}/articles?categorySlug=${categorySlug}&page=${page}&limit=10`
         );
         setCategory(res.category);
         setArticles(res.data || []);
@@ -41,7 +43,7 @@ export default function PublicCategoryPage() {
     if (tenantSlug && categorySlug) {
       loadCategoryArticles();
     }
-  }, [tenantSlug, categorySlug]);
+  }, [tenantSlug, categorySlug, page]);
 
   if (isLoading) {
     return (
@@ -125,6 +127,13 @@ export default function PublicCategoryPage() {
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all self-center flex-shrink-0" />
               </Link>
             ))}
+            <Pagination
+              page={meta.page}
+              totalPages={meta.totalPages}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={(p) => setPage(p)}
+            />
           </div>
         )}
       </div>

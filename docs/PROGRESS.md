@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase E Completed** (Public Help Center: landing page, category pages, and article detail pages by tenant slug).
-- **Next task: Week 2, Phase F** (Polish: pagination, sorting, loading/empty/error states, responsive layout, basic accessibility).
+- Phase: **Week 2, Phase F Completed** (Polish: pagination, sorting, loading/empty/error states, responsive layout, basic accessibility).
+- **Next task: Week 2, Phase G** (Final test review, checklist verification, documentation updates in README and docs/api.md).
 
 ## Completed
+- **Week 2 Phase F (Polish, Pagination & Accessibility):** Reusable accessible `Pagination` component, sorting controls on article tables (Newest, Oldest, Title A-Z, Title Z-A, Recently Updated), responsive layout refinements, proper ARIA labeling for accessibility, enhanced loading skeletons, empty states, and error handling.
 - **Week 2 Phase E (Public Help Center):** Backend public APIs (`/api/v1/public/:tenantSlug`, `/categories`, `/articles`, `/articles/:articleSlug`) resolving active tenant by slug and returning **PUBLISHED** content strictly. Public portal UI with `PublicHelpLayout`, `PublicLandingPage` (hero, topic cards, recent guides), `PublicCategoryPage` (category overview with articles), and `PublicArticleDetailPage` with `SafeContent` XSS sanitization and breadcrumb navigation. Automated tests in `server/tests/public.test.js` verifying published-only visibility, draft/archived 404 privacy, and cross-tenant isolation.
 - **Week 2 Phase D (Articles UI & Safe Rendering):** Built `ArticlesListPage` with status tabs (`ALL`, `DRAFT`, `PUBLISHED`, `ARCHIVED`), category filter, search, badges, pagination, quick preview modal, and action buttons. Built `ArticleEditorPage` with auto-slug generation, category selector, dual-tab Write/Live-Preview, and role-aware publishing. Implemented `SafeContent` with DOMPurify sanitization to block stored XSS.
 - **Week 2 Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
@@ -41,6 +42,23 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase F: Polish, Sorting, Pagination & Accessibility
+- What was built:
+  - `client/src/components/Pagination.jsx`: Reusable, keyboard-navigable pagination component with item count ranges, bounded Previous/Next buttons, and semantic ARIA labeling.
+  - Sorting support: Added sorting dropdown to `ArticlesListPage.jsx` supporting predictable sorting (`Newest First`, `Oldest First`, `Title A-Z`, `Title Z-A`, `Recently Updated`).
+  - Integrated `Pagination` component into both `ArticlesListPage.jsx` and `PublicCategoryPage.jsx`.
+  - Accessibility & Polish: Added explicit `aria-label` attributes to icon-only buttons, modal dialogs, and navigation elements. Refined loading skeletons, empty states with direct CTAs, and responsive layout behavior across mobile and desktop breakpoints.
+- Files added/changed:
+  - `client/src/components/Pagination.jsx`, `client/src/features/articles/ArticlesListPage.jsx`, `client/src/features/public/PublicCategoryPage.jsx`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - All 62 backend tests passing (`npm test`).
+  - Client production build succeeded (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase E: Public Help Center Portal & Endpoints
 - What was built:
   - `server/src/modules/public/`: `public.service.js`, `public.controller.js`, `public.routes.js`.
