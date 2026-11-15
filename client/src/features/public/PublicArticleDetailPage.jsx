@@ -9,7 +9,10 @@ import {
   User,
   AlertCircle,
   Loader2,
-  FolderTree,
+  ThumbsUp,
+  ThumbsDown,
+  CheckCircle2,
+  Send,
 } from 'lucide-react';
 
 export default function PublicArticleDetailPage() {
@@ -19,6 +22,22 @@ export default function PublicArticleDetailPage() {
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Feedback widget state
+  const storageKey = `kh_feedback_${tenantSlug}_${articleSlug}`;
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(null); // true | false | null
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackError, setFeedbackError] = useState(null);
+
+  useEffect(() => {
+    // Check if user already submitted feedback in this browser
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      setHasSubmitted(true);
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     async function loadArticle() {
@@ -38,6 +57,32 @@ export default function PublicArticleDetailPage() {
       loadArticle();
     }
   }, [tenantSlug, articleSlug]);
+
+  async function handleFeedbackSubmit(e) {
+    if (e) e.preventDefault();
+    if (selectedRating === null) return;
+
+    setIsSubmittingFeedback(true);
+    setFeedbackError(null);
+
+    try {
+      await apiRequest(`/api/v1/public/${tenantSlug}/articles/${articleSlug}/feedback`, {
+        method: 'POST',
+        body: {
+          helpful: selectedRating,
+          comment: feedbackComment.trim() || undefined,
+        },
+      });
+
+      setHasSubmitted(true);
+      localStorage.setItem(storageKey, 'true');
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+      setFeedbackError(err?.error?.message || 'Failed to submit feedback. Please try again.');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -126,6 +171,109 @@ export default function PublicArticleDetailPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-xs">
         <SafeContent content={article.content} />
       </div>
+
+      {/* Helpful / Not Helpful Feedback Widget */}
+      <section className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-xs space-y-4">
+        {hasSubmitted ? (
+          <div className="flex items-center gap-3 text-emerald-700 bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-xs font-medium">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span>Thank you! Your feedback helps us improve our customer documentation.</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Was this article helpful?</h3>
+                <p className="text-xs text-gray-500">Let us know how we can make our guides better.</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating(true)}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+                    selectedRating === true
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                  }`}
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                  <span>Yes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedRating(false)}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+                    selectedRating === false
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                  }`}
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" />
+                  <span>No</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Optional Comment Section when a button is clicked */}
+            {selectedRating !== null && (
+              <form onSubmit={handleFeedbackSubmit} className="pt-3 border-t border-gray-100 space-y-3">
+                <div>
+                  <label htmlFor="feedbackComment" className="block text-xs font-medium text-gray-700 mb-1">
+                    {selectedRating === true
+                      ? "Glad it helped! Anything else you'd like to add? (Optional)"
+                      : 'Sorry to hear that. How can we improve this article? (Optional)'}
+                  </label>
+                  <textarea
+                    id="feedbackComment"
+                    rows={3}
+                    maxLength={1000}
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    placeholder="Provide any details that could help us improve..."
+                    className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                  />
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 mt-1">
+                    <span>{1000 - feedbackComment.length} characters remaining</span>
+                  </div>
+                </div>
+
+                {feedbackError && (
+                  <p className="text-xs text-red-600 font-medium">{feedbackError}</p>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingFeedback}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isSubmittingFeedback ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Send className="w-3.5 h-3.5" />
+                    )}
+                    <span>Submit Feedback</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRating(null);
+                      setFeedbackComment('');
+                      setFeedbackError(null);
+                    }}
+                    className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Navigation Footer */}
       <div className="pt-4 flex justify-between items-center text-xs text-gray-500">

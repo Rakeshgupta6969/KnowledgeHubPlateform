@@ -51,6 +51,21 @@ class PublicController {
       next(err);
     }
   }
+
+  async submitFeedback(req, res, next) {
+    try {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      const result = await publicService.submitArticleFeedback(
+        req.params.tenantSlug,
+        req.params.articleSlug,
+        req.body,
+        clientIp
+      );
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new PublicController();

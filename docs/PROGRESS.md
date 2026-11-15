@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase A Completed** (PostgreSQL Full-Text Search and public category filters).
-- **Next task: Week 3 Phase B** (Article helpful/not-helpful feedback endpoint and UI).
+- Phase: **Week 3 Phase B Completed** (Article helpful/not-helpful feedback endpoint, abuse controls and UI).
+- **Next task: Week 3 Phase C** (Analytics data collection: article views, bot filtering, search logs and aggregations).
 
 ## Completed
+- **Phase B (Article Feedback & Abuse Controls):** Added `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` accepting boolean `helpful` and optional 1000-char `comment`. Enforced strict tenant scoping, published-only article verification (drafts/archived/cross-tenant return 404), and anonymous SHA-256 IP hashing abuse prevention blocking rapid spam with 429 `FEEDBACK_ALREADY_SUBMITTED`. Integrated interactive feedback widget in `PublicArticleDetailPage.jsx` with rating buttons, optional comment form, thank you state, and localStorage persistence. Added 8 automated tests in `tests/feedback.test.js`.
 - **Phase A (PostgreSQL Full-Text Search & Category Filters):** Implemented parameterized PostgreSQL FTS on published articles using `plainto_tsquery('english', $1)` against `to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))` with `ts_rank` relevance ranking, category filter, and pagination. Bounded and validated search queries (`q` 1-100 characters). Enforced strict tenant scoping and published-only privacy. Updated public landing page with live search, category filter pills, empty states, and error handling. Added 9 automated tests in `tests/search.test.js` covering FTS, category filters, bounds, and negative cross-tenant isolation.
 - **Phase G (Tests + Wrap-up):** Verified all 7 criteria of the Week 2 checklist in PLAN.md. 62 passed automated tests across 5 test suites. Updated database seed script with categories and articles. Authored complete API reference in `docs/api.md` and updated root `README.md`.
 - **Phase F (Polish, Pagination & Accessibility):** Reusable accessible `Pagination` component, sorting controls on article tables (Newest, Oldest, Title A-Z, Title Z-A, Recently Updated), responsive layout refinements, proper ARIA labeling for accessibility, enhanced loading skeletons, empty states, and error handling.
@@ -49,6 +50,25 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase B: Article Helpful Feedback & Abuse Controls
+- What was built:
+  - Backend API: `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` validating `helpful` (boolean) and optional `comment` (max 1000 characters).
+  - Abuse prevention: IP hashing with SHA-256 and duplicate submission throttling within 10-minute window (429 `FEEDBACK_ALREADY_SUBMITTED`).
+  - Privacy and tenancy: Only active tenants and `PUBLISHED` articles accept feedback; draft, archived, or cross-tenant articles return 404.
+  - Added `ApiError.tooManyRequests(message, code)` to `server/src/utils/errors.js`.
+  - Frontend feedback widget in `PublicArticleDetailPage.jsx` featuring helpful/unhelpful rating buttons, optional comment textarea, submission loader, error alerts, thank-you banner, and local storage submission persistence.
+  - Automated test suite `server/tests/feedback.test.js` covering 8 test cases (ratings, comments, bounds, rapid abuse throttling, and cross-tenant isolation).
+- Files added/changed:
+  - `server/src/utils/errors.js`, `server/src/modules/public/public.service.js`, `server/src/modules/public/public.controller.js`, `server/src/modules/public/public.routes.js`, `client/src/features/public/PublicArticleDetailPage.jsx`, `server/tests/feedback.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 79 passed tests across 7 test suites in Jest/Supertest suite (`npm test`).
+  - Client production build passed (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase A: PostgreSQL Full-Text Search with Category Filters
 - What was built:
   - Database schema models for Week 3 added to Prisma (`Feedback`, `ArticleView`, `SearchLog`, `AuditLog`) and migration `20261115103541_add_week3_models` created and deployed.

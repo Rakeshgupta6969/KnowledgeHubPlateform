@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { Prisma } = require('@prisma/client');
 const prisma = require('../../config/prisma');
 const ApiError = require('../../utils/errors');
@@ -276,6 +277,79 @@ class PublicService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async submitArticleFeedback(tenantSlug, articleSlug, data, clientIp = null) {
+    const tenant = await this.getPublicTenant(tenantSlug);
+
+    if (!articleSlug) {
+      throw ApiError.badRequest('Article slug is required', 'SLUG_REQUIRED');
+    }
+
+    if (typeof data.helpful !== 'boolean') {
+      throw ApiError.badRequest('Helpful rating must be a boolean (true/false)', 'INVALID_RATING');
+    }
+
+    if (data.comment && data.comment.length > 1000) {
+      throw ApiError.badRequest('Comment must not exceed 1000 characters', 'COMMENT_TOO_LONG');
+    }
+
+    const article = await prisma.article.findUnique({
+      where: {
+        tenantId_slug: {
+          tenantId: tenant.id,
+          slug: articleSlug.toLowerCase(),
+        },
+      },
+    });
+
+    if (!article || article.status !== 'PUBLISHED') {
+      throw ApiError.notFound('Article not found', 'ARTICLE_NOT_FOUND');
+    }
+
+    // Abuse prevention: anonymous SHA-256 hash of IP to prevent rapid submission spam
+    const ipHash = clientIp
+      ? crypto.createHash('sha256').update(clientIp + '_kh_feedback_salt').digest('hex')
+      : null;
+
+    if (ipHash) {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const recentFeedback = await prisma.feedback.findFirst({
+        where: {
+          tenantId: tenant.id,
+          articleId: article.id,
+          ipHash,
+          createdAt: { gte: tenMinutesAgo },
+        },
+      });
+
+      if (recentFeedback) {
+        throw ApiError.tooManyRequests(
+          'Feedback already submitted recently for this article',
+          'FEEDBACK_ALREADY_SUBMITTED'
+        );
+      }
+    }
+
+    const feedback = await prisma.feedback.create({
+      data: {
+        tenantId: tenant.id,
+        articleId: article.id,
+        helpful: data.helpful,
+        comment: data.comment?.trim() || null,
+        ipHash,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Thank you for your feedback',
+      feedback: {
+        id: feedback.id,
+        helpful: feedback.helpful,
+        createdAt: feedback.createdAt,
       },
     };
   }

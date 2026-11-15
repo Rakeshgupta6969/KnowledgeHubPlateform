@@ -18,4 +18,7 @@ router.get('/:tenantSlug/articles', publicController.getArticles);
 // GET /api/v1/public/:tenantSlug/articles/:articleSlug - Read single published article
 router.get('/:tenantSlug/articles/:articleSlug', publicController.getArticleBySlug);
 
+// POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback - Submit helpful feedback
+router.post('/:tenantSlug/articles/:articleSlug/feedback', publicController.submitFeedback);
+
 module.exports = router;
