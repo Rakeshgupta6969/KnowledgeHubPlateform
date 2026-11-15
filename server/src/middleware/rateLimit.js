@@ -43,8 +43,26 @@ const feedbackLimiter = createLimiter({
   code: 'FEEDBACK_RATE_LIMIT_EXCEEDED',
 });
 
+// 10 registration attempts per hour per IP (anti-bot / tenant spam)
+const registerLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Too many registration attempts from this IP. Please try again later.',
+  code: 'REGISTER_RATE_LIMIT_EXCEEDED',
+});
+
+// General API rate limit (300 requests per 15 minutes per IP)
+const apiLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: 'Too many requests. Please slow down.',
+  code: 'API_RATE_LIMIT_EXCEEDED',
+});
+
 module.exports = {
   loginLimiter,
   searchLimiter,
   feedbackLimiter,
+  registerLimiter,
+  apiLimiter,
 };

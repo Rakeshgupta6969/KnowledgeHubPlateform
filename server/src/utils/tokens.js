@@ -30,7 +30,7 @@ function getRefreshTokenCookieOptions() {
   return {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.COOKIE_SAMESITE || 'lax',
     path: '/api/v1',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   };
@@ -40,7 +40,7 @@ function getClearCookieOptions() {
   return {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.COOKIE_SAMESITE || 'lax',
     path: '/api/v1',
   };
 }

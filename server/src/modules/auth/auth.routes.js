@@ -3,11 +3,11 @@ const authController = require('./auth.controller');
 const { validateBody } = require('../../middleware/validate');
 const { registerSchema, loginSchema } = require('./auth.validation');
 const authMiddleware = require('../../middleware/auth');
-const { loginLimiter } = require('../../middleware/rateLimit');
+const { loginLimiter, registerLimiter } = require('../../middleware/rateLimit');
 
 const router = express.Router();
 
-router.post('/register', validateBody(registerSchema), authController.register);
+router.post('/register', registerLimiter, validateBody(registerSchema), authController.register);
 router.post('/login', loginLimiter, validateBody(loginSchema), authController.login);
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);

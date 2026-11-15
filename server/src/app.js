@@ -7,6 +7,7 @@ const openapiSpec = require('./docs/openapi.json');
 const config = require('./config/environment');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const { apiLimiter } = require('./middleware/rateLimit');
 
 const app = express();
 
@@ -15,15 +16,28 @@ app.set('trust proxy', 1);
 app.use(
   helmet({
     contentSecurityPolicy: false, // Allows Swagger UI documentation rendering
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
+
+// Strict CORS validation against CLIENT_ORIGIN (supports comma-separated list)
+const allowedOrigins = config.clientOrigin
+  ? config.clientOrigin.split(',').map((o) => o.trim())
+  : ['http://localhost:5173'];
+
 app.use(
   cors({
-    origin: config.clientOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. server-to-server, curl, mobile tools)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Blocked by CORS policy: Origin not allowed'));
+    },
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
 // Health check endpoint
@@ -45,8 +59,8 @@ app.use(
   })
 );
 
-// API v1 routes
-app.use('/api/v1', routes);
+// API v1 routes with global rate limiting
+app.use('/api/v1', apiLimiter, routes);
 
 // 404 handler for unknown routes
 app.use((req, res) => {

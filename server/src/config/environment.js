@@ -16,4 +16,15 @@ const config = {
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 };
 
+if (config.env === 'production') {
+  if (
+    config.accessTokenSecret === 'dev_access_secret_key' ||
+    config.refreshTokenSecret === 'dev_refresh_secret_key'
+  ) {
+    console.warn(
+      '[SECURITY WARNING] Production environment detected with default JWT secrets! Ensure ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET are explicitly configured in production.'
+    );
+  }
+}
+
 module.exports = config;
