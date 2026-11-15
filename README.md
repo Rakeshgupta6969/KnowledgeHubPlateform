@@ -4,14 +4,16 @@
 
 ## Overview
 
-KnowledgeHub enables companies (tenants) to manage customer support help centers with complete data isolation.
-This implementation delivers **Week 1 (Days 2–7)** of the architecture roadmap:
-- Multi-tenant data modeling with UUID primary keys and strict relational constraints.
-- Atomic workspace onboarding (Tenant + User + Owner Membership in one database transaction).
-- Secure authentication: Short-lived access tokens + revocable refresh sessions stored in HttpOnly, SameSite cookies.
-- Server-enforced tenant context derivation strictly from verified memberships (cross-tenant spoof protection).
-- Full-stack client dashboard with automatic token refresh, login, registration, and tenant profile display.
-- Comprehensive test suite covering authentication, session revocation, and negative cross-tenant isolation.
+KnowledgeHub enables companies (tenants) to create, manage, and publish customer support help centers with complete tenant data isolation.
+
+This repository implements **Week 1 (Days 1–7)** and **Week 2 (Days 8–14)** of the architecture roadmap:
+- **Tenant Isolation:** Tenant context is strictly derived from verified memberships. Queries are scoped by `tenant_id` on every private route.
+- **Tenant Dashboard Shell:** Responsive layout with sidebar, profile, settings, branding management, and a dynamic workspace switcher (rendered only for multi-membership users).
+- **Categories Management:** CRUD operations, per-tenant slug uniqueness, ordering, archiving, and role-based access control (`OWNER`, `ADMIN`, `EDITOR`).
+- **Articles Lifecycle & Management:** Draft, published, and archived states with validated transitions. Parent-child tenant validation prevents cross-tenant category attachment.
+- **Content Safety & Security:** Rich content and markdown are sanitized using DOMPurify (`SafeContent.jsx`) before rendering to eliminate stored XSS.
+- **Public Help Center:** Customer-facing portal resolving tenants by slug (`/help/:tenantSlug`). Strictly displays **PUBLISHED** content only; drafts and archived articles return non-disclosing 404s.
+- **Automated Test Suite:** 62 passed automated tests covering auth, tenant isolation, category/article lifecycles, and negative cross-tenant attacks.
 
 ---
 
@@ -19,12 +21,12 @@ This implementation delivers **Week 1 (Days 2–7)** of the architecture roadmap
 
 | Layer | Technology | Details |
 |---|---|---|
-| **Frontend** | React 18 + Vite | Modular feature architecture, Tailwind CSS, React Router v6, TanStack Query |
+| **Frontend** | React 18 + Vite | Tailwind CSS, React Router v6, TanStack Query, Lucide icons, DOMPurify |
 | **Backend** | Node.js + Express | CommonJS, modular monolith (`src/modules`, `src/middleware`, `src/utils`) |
-| **Database** | PostgreSQL 16 Alpine | Managed via Docker Compose and Prisma ORM |
+| **Database** | PostgreSQL 16 Alpine | Containerized via Docker Compose, managed with Prisma ORM |
 | **Authentication** | JWT + bcrypt | Short-lived access token (15m) + revocable refresh cookie (7d) |
 | **Validation** | Zod | Server-side request validation with structured error responses |
-| **Testing** | Jest + Supertest | Automated integration tests against isolated test database |
+| **Testing** | Jest + Supertest | 62 integration tests against isolated test database (`knowledgehub_test`) |
 
 ---
 
@@ -42,55 +44,36 @@ knowledgehubFolder/
 │   └── api.md               # API endpoint specifications and examples
 ├── server/
 │   ├── prisma/
-│   │   ├── schema.prisma    # Models: Tenant, User, Membership, RefreshToken
+│   │   ├── schema.prisma    # Models: Tenant, User, Membership, RefreshToken, Category, Article
 │   │   ├── migrations/      # Committed SQL migrations
 │   │   └── seed.js          # Demo seed script (Acme Corp & Globex)
 │   ├── src/
 │   │   ├── config/          # Environment & Prisma client configuration
 │   │   ├── middleware/      # auth, tenantContext, rbac, validate, errorHandler
-│   │   ├── modules/         # auth (controller, service, routes, validation)
-│   │   │   └── tenants/     # tenant (controller, routes)
+│   │   ├── modules/         # auth, tenants, categories, articles, public
 │   │   ├── routes/          # API v1 route aggregator
 │   │   ├── utils/           # errors, tokens, slugify
 │   │   ├── app.js           # Express application setup
 │   │   └── server.js        # Server listener
 │   └── tests/
 │       ├── setup.js         # Test lifecycle & database reset
-│       ├── auth.test.js     # Auth & registration integration tests
-│       └── tenant.test.js   # Tenant context & isolation tests
+│       ├── auth.test.js     # Auth & registration tests
+│       ├── tenant.test.js   # Tenant context & isolation tests
+│       ├── category.test.js # Category CRUD & cross-tenant tests
+│       ├── article.test.js  # Article lifecycle & category ownership tests
+│       └── public.test.js   # Public portal privacy & published-only tests
 └── client/
     ├── src/
-    │   ├── app/             # Application routing (AppRoutes.jsx)
-    │   ├── components/      # Route guards (ProtectedRoute, PublicRoute)
+    │   ├── app/             # AppRoutes configuration
+    │   ├── components/      # ProtectedRoute, PublicRoute, SafeContent, Pagination
+    │   ├── layouts/         # DashboardLayout (Sidebar, Switcher, Nav)
     │   ├── features/
     │   │   ├── auth/        # AuthContext, LoginPage, RegisterPage
-    │   │   └── tenant/      # DashboardPage
-    │   ├── lib/             # api.js client with auto-refresh on 401
-    │   ├── App.jsx          # Providers wrapper
-    │   ├── main.jsx         # React root
-    │   └── index.css        # Tailwind styling
-    └── vite.config.js       # Vite dev server & proxy configuration
-```
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `server/.env`:
-
-```env
-# Server configuration
-NODE_ENV=development
-PORT=5000
-CLIENT_ORIGIN=http://localhost:5173
-
-# Database configuration
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/knowledgehub?schema=public"
-TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/knowledgehub_test?schema=public"
-
-# JWT Secrets (replace with strong random strings in production)
-ACCESS_TOKEN_SECRET=dev_access_token_secret_knowledgehub_2026_super_secure_key
-REFRESH_TOKEN_SECRET=dev_refresh_token_secret_knowledgehub_2026_super_secure_key
+    │   │   ├── tenant/      # OverviewPage, ProfilePage, SettingsPage
+    │   │   ├── categories/  # CategoriesPage (CRUD modal, filters, archive)
+    │   │   ├── articles/    # ArticlesListPage, ArticleEditorPage
+    │   │   └── public/      # PublicHelpLayout, PublicLandingPage, PublicCategoryPage, PublicArticleDetailPage
+    │   └── lib/             # Unified API client with automatic refresh
 ```
 
 ---
@@ -98,75 +81,64 @@ REFRESH_TOKEN_SECRET=dev_refresh_token_secret_knowledgehub_2026_super_secure_key
 ## Getting Started
 
 ### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ or LTS)
-- [Docker](https://www.docker.com/) & Docker Compose
+- Node.js (v18+ LTS)
+- Docker Desktop (or local PostgreSQL 16)
 
 ### 2. Start PostgreSQL
-From the repository root:
 ```bash
-docker-compose up -d
-```
-Ensure both development and test databases are created:
-```bash
-docker exec -i knowledgehub-postgres psql -U postgres -c "CREATE DATABASE knowledgehub_test;"
+docker compose up -d
 ```
 
-### 3. Setup and Run the Server
+### 3. Setup Backend
 ```bash
 cd server
+cp .env.example .env
 npm install
-
-# Run database migrations
-npm run migrate
-
-# Seed demo tenants and accounts
+npx prisma migrate dev
 npm run seed
-
-# Start server in development mode
 npm run dev
-# (or start directly: npm start)
 ```
-The server starts at `http://localhost:5000`.
+Server runs on `http://localhost:5000`.
 
-### 4. Setup and Run the Client
+### 4. Setup Frontend
 ```bash
-cd ../client
+cd client
 npm install
-
-# Start Vite development server
 npm run dev
 ```
-The frontend starts at `http://localhost:5173`.
+Client runs on `http://localhost:5173`.
 
 ---
 
-## Demo Accounts (from Seed)
+## Seed Accounts & Workspaces
 
-The database seed provides two separate demo tenants with pre-configured accounts:
+Running `npm run seed` creates two isolated demonstration companies:
 
-| Tenant | Role | Email | Password |
-|---|---|---|---|
-| **Acme Corp** (`acme`) | Owner | `owner@acme.com` | `Password123!` |
-| **Acme Corp** (`acme`) | Admin | `admin@acme.com` | `Password123!` |
-| **Globex Corporation** (`globex`) | Owner | `owner@globex.com` | `Password123!` |
+| Company | Slug | User Role | Email | Password | Help Center URL |
+|---|---|---|---|---|---|
+| **Acme Corp** | `acme` | OWNER | `owner@acme.com` | `Password123!` | `http://localhost:5173/help/acme` |
+| **Acme Corp** | `acme` | ADMIN | `admin@acme.com` | `Password123!` | `http://localhost:5173/help/acme` |
+| **Globex Corporation** | `globex` | OWNER | `owner@globex.com` | `Password123!` | `http://localhost:5173/help/globex` |
 
 ---
 
-## Running the Automated Test Suite
+## Running Verification & Tests
 
-Run the full integration test suite against the isolated `knowledgehub_test` database:
+### Automated Backend Tests
+Runs all 5 test suites against the dedicated `knowledgehub_test` database:
 ```bash
 cd server
 npm test
 ```
+Result: 5 test suites, 62 passed tests.
 
-To run linting:
+### Code Quality & Linting
 ```bash
 cd server
 npm run lint
 ```
 
-To build the client for production:
+### Client Production Build
 ```bash
 cd client
 npm run build
@@ -174,10 +146,9 @@ npm run build
 
 ---
 
-## Key Security & Multi-Tenancy Features
+## Multi-Tenancy Architecture Guarantees
 
-1. **Derived Tenant Context:** On protected routes (`/api/v1/tenant/*`), tenant ID is **never trusted** from request bodies, query strings, or client parameters. It is derived strictly from `req.user.memberships`.
-2. **Negative Cross-Tenant Protection:** Attempting to supply a different tenant ID via `x-tenant-id` that does not match the authenticated user's active memberships triggers a `403 TENANT_ACCESS_DENIED`.
-3. **Atomic Onboarding:** `POST /api/v1/auth/register` wraps `Tenant`, `User`, and `Membership` creation inside a single `prisma.$transaction`. If any step fails (e.g. duplicate slug or duplicate email), the entire transaction rolls back.
-4. **Session Revocation:** Refresh tokens are signed JWTs whose SHA-256 hash is tracked in the `refresh_tokens` database table. Calling `POST /api/v1/auth/logout` sets `revokedAt = NOW()`, invalidating the session immediately.
-5. **Generic Auth Errors:** Login failures due to wrong password, unknown email, or suspended user return an identical `401 Invalid email or password` response to prevent user enumeration.
+1. **Header Spoof Protection:** The server rejects any attempt to access another company's data via spoofed `x-tenant-id` with `403 TENANT_ACCESS_DENIED`.
+2. **Category Isolation:** An article created in Tenant A cannot be attached to Tenant B's category (`400 INVALID_CATEGORY`).
+3. **Public Customer Privacy:** Draft and archived articles strictly return `404 ARTICLE_NOT_FOUND` on public routes. Only `PUBLISHED` content is exposed.
+4. **XSS Sanitization:** All customer-facing and editor content is sanitized through DOMPurify before rendering.

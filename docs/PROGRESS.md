@@ -3,12 +3,18 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase F Completed** (Polish: pagination, sorting, loading/empty/error states, responsive layout, basic accessibility).
-- **Next task: Week 2, Phase G** (Final test review, checklist verification, documentation updates in README and docs/api.md).
+- Phase: **Week 2 (Days 8–14) Fully Completed**.
+- **Next task: Week 3, Day 15** (PostgreSQL Full-Text Search for published articles, search UI and filters).
 
 ## Completed
-- **Week 2 Phase F (Polish, Pagination & Accessibility):** Reusable accessible `Pagination` component, sorting controls on article tables (Newest, Oldest, Title A-Z, Title Z-A, Recently Updated), responsive layout refinements, proper ARIA labeling for accessibility, enhanced loading skeletons, empty states, and error handling.
-- **Week 2 Phase E (Public Help Center):** Backend public APIs (`/api/v1/public/:tenantSlug`, `/categories`, `/articles`, `/articles/:articleSlug`) resolving active tenant by slug and returning **PUBLISHED** content strictly. Public portal UI with `PublicHelpLayout`, `PublicLandingPage` (hero, topic cards, recent guides), `PublicCategoryPage` (category overview with articles), and `PublicArticleDetailPage` with `SafeContent` XSS sanitization and breadcrumb navigation. Automated tests in `server/tests/public.test.js` verifying published-only visibility, draft/archived 404 privacy, and cross-tenant isolation.
+- **Phase G (Tests + Wrap-up):** Verified all 7 criteria of the Week 2 checklist in PLAN.md. 62 passed automated tests across 5 test suites. Updated database seed script with categories and articles. Authored complete API reference in `docs/api.md` and updated root `README.md`.
+- **Phase F (Polish, Pagination & Accessibility):** Reusable accessible `Pagination` component, sorting controls on article tables (Newest, Oldest, Title A-Z, Title Z-A, Recently Updated), responsive layout refinements, proper ARIA labeling for accessibility, enhanced loading skeletons, empty states, and error handling.
+- **Phase E (Public Help Center):** Backend public APIs (`/api/v1/public/:tenantSlug`, `/categories`, `/articles`, `/articles/:articleSlug`) resolving active tenant by slug and returning **PUBLISHED** content strictly. Public portal UI with `PublicHelpLayout`, `PublicLandingPage` (hero, topic cards, recent guides), `PublicCategoryPage` (category overview with articles), and `PublicArticleDetailPage` with `SafeContent` XSS sanitization and breadcrumb navigation. Automated tests in `server/tests/public.test.js` verifying published-only visibility, draft/archived 404 privacy, and cross-tenant isolation.
+- **Phase D (Articles UI & Safe Rendering):** Built `ArticlesListPage` with status tabs (`ALL`, `DRAFT`, `PUBLISHED`, `ARCHIVED`), category filter, search, badges, pagination, quick preview modal, and action buttons. Built `ArticleEditorPage` with auto-slug generation, category selector, dual-tab Write/Live-Preview, and role-aware publishing. Implemented `SafeContent` with DOMPurify sanitization to block stored XSS.
+- **Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
+- **Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
+- **Phase A (Dashboard Shell):** `DashboardLayout` with responsive collapsible sidebar, top navigation, dynamic tenant switcher (rendered conditionally only for users with >1 memberships), `OverviewPage`, `ProfilePage`, `SettingsPage` with branding updates, and backend `PATCH /api/v1/tenant/current` with RBAC enforcement (`OWNER`/`ADMIN`).
+- **Week 1 Phases A-F:** Multi-tenant setup, database models (`Tenant`, `User`, `Membership`, `RefreshToken`), auth APIs (register, login, refresh, logout, me), middleware, client auth, and initial tests.
 - **Week 2 Phase D (Articles UI & Safe Rendering):** Built `ArticlesListPage` with status tabs (`ALL`, `DRAFT`, `PUBLISHED`, `ARCHIVED`), category filter, search, badges, pagination, quick preview modal, and action buttons. Built `ArticleEditorPage` with auto-slug generation, category selector, dual-tab Write/Live-Preview, and role-aware publishing. Implemented `SafeContent` with DOMPurify sanitization to block stored XSS.
 - **Week 2 Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
 - **Week 2 Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
@@ -42,6 +48,30 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase G: Tests, Wrap-up & Checklist Verification
+- What was built:
+  - Reviewed and confirmed all 7 items of the Week 2 checklist in PLAN.md:
+    1. Tenant Admin/Editor can manage only their tenant's categories and articles (enforced via `auth`, `tenantContext`, and `rbac` middleware).
+    2. Article status transitions are validated by the backend (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`).
+    3. Draft and archived articles return 404 to public visitors; only `PUBLISHED` content is exposed.
+    4. Public Help Center resolves tenant using a unique slug.
+    5. Parent-child tenant relationships checked: article creation/update rejects category from another tenant (`INVALID_CATEGORY`).
+    6. List endpoints support pagination (`page`, `limit` max 50) and predictable sorting (`sort=createdAt:desc`, etc.).
+    7. UI works seamlessly on desktop and mobile and displays loading, error, and empty states.
+  - Enhanced demo database seed script (`server/prisma/seed.js`) to generate initial categories and articles for Acme Corp and Globex Corporation.
+  - Authored comprehensive API reference in `docs/api.md` covering all Week 1 & Week 2 endpoints.
+  - Updated root `README.md` with updated architecture, endpoint summaries, credentials, and verification instructions.
+- Files added/changed:
+  - `server/prisma/seed.js`, `docs/api.md`, `README.md`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 62 passed tests across 5 test suites in Jest/Supertest suite (`npm test`).
+  - Client production build succeeded (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase F: Polish, Sorting, Pagination & Accessibility
 - What was built:
   - `client/src/components/Pagination.jsx`: Reusable, keyboard-navigable pagination component with item count ranges, bounded Previous/Next buttons, and semantic ARIA labeling.
