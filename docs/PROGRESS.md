@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase E Completed** (Redis caching for public tenant config, categories, and articles with graceful fallback).
-- **Next task: Week 3 Phase F** (RBAC hardening and audit logging for publish, archive, and membership operations).
+- Phase: **Week 3 Phase F Completed** (RBAC hardening and audit logging for publish, archive, and membership operations).
+- **Next task: Week 3 Phase G** (Rate limiting on login, search, and feedback).
 
 ## Completed
+- **Phase F (RBAC Hardening & Administrative Audit Logging):** Hardened role permissions across all routes. Enforced that Editors can only create and edit `DRAFT` articles, rejecting attempts to publish or archive via create/update with 403 `ROLE_NOT_AUTHORIZED`. Added workspace member management endpoints (`GET /api/v1/tenant/members`, `PATCH /api/v1/tenant/members/:memberId`) allowing Owners to manage member roles. Created `AuditService` (`server/src/modules/audit/audit.service.js`) and administrative audit endpoint `GET /api/v1/tenant/audit-logs` recording audit logs on article publish/archive/deletion, category archiving, workspace settings updates, and member role changes. Added 9 automated tests in `tests/rbac.test.js`.
 - **Phase E (Redis Caching Layer & Invalidation):** Added `redis:7-alpine` container (`knowledgehub-redis`) to Docker Compose on port 6379 with healthcheck. Created resilient cache client `server/src/config/redis.js` using `ioredis` with non-blocking error interception, offline queue suppression, and 100% database fallback when Redis is offline. Cached public tenant config (`tenant:<slug>`, 1hr TTL), category lists (`categories:<slug>`, 15m TTL), and published article reads (`article:<slug>:<slug>`, 15m TTL). Implemented automatic cache invalidation hooks on article changes, category changes, and branding updates. Added 6 automated tests in `tests/cache.test.js`.
 - **Phase D (Analytics Dashboard UI):** Built full-featured customer intelligence dashboard in `client/src/features/analytics/AnalyticsPage.jsx` with date range selectors (7d, 30d, 90d, 1y), KPI summary cards (Article Views, Search Queries, Helpfulness Score, Unanswered Searches), sentiment gauge breakdown, top articles ranking table, popular search terms table, and actionable zero-result queries with direct "Draft Article" links. Enforced server and client RBAC (`OWNER`/`ADMIN` only; informative lock state for `EDITOR`). Added navigation link in `DashboardLayout.jsx` and registered `/analytics` in `AppRoutes.jsx`.
 - **Phase C (Analytics Data Collection & Aggregation):** Built view collection endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with User-Agent bot filtering (identifying crawlers/bots) and daily session deduplication. Implemented backend `AnalyticsService` with multi-table aggregations for `GET /api/v1/analytics/overview` (views, searches, feedback ratio), `GET /api/v1/analytics/articles` (top articles by view and helpfulness count), and `GET /api/v1/analytics/searches` (popular searches and searches with no results). Enforced strict RBAC (`OWNER`/`ADMIN` only) and multi-tenant scoping. Added 9 automated tests in `tests/analytics.test.js`.
@@ -53,6 +54,23 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase F: RBAC Hardening & Administrative Audit Logging
+- What was built:
+  - Role enforcement hardening on article creation and update: explicitly blocked `EDITOR` role from creating pre-published articles or changing status to `PUBLISHED` / `ARCHIVED`, returning 403 `ROLE_NOT_AUTHORIZED`.
+  - Built `AuditService` (`server/src/modules/audit/audit.service.js`) capturing administrative actions: `ARTICLE_PUBLISHED`, `ARTICLE_ARCHIVED`, `ARTICLE_DELETED`, `CATEGORY_ARCHIVED`, `TENANT_SETTINGS_UPDATED`, `MEMBER_ROLE_UPDATED`.
+  - Added workspace member management APIs: `GET /api/v1/tenant/members` and `PATCH /api/v1/tenant/members/:memberId` (Owner role management with audit logging).
+  - Added `GET /api/v1/tenant/audit-logs` endpoint for Owners and Admins to inspect administrative workspace activity.
+  - Automated tests in `server/tests/rbac.test.js` covering article role bounds, member promotion, owner protection, and audit event creation.
+- Files added/changed:
+  - `server/src/modules/audit/audit.service.js`, `server/src/modules/articles/article.controller.js`, `server/src/modules/categories/category.controller.js`, `server/src/modules/tenants/tenant.controller.js`, `server/src/modules/tenants/tenant.routes.js`, `server/tests/rbac.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 103 passed tests across 10 test suites in Jest/Supertest suite (`npm test`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase E: Redis Caching Layer & Invalidation
 - What was built:
   - Added Redis 7 container `knowledgehub-redis` in `docker-compose.yml` on port 6379 with healthcheck and persistent volume `redis_data`.

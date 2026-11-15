@@ -21,4 +21,31 @@ router.patch(
   tenantController.updateCurrent
 );
 
+// GET /api/v1/tenant/members - List workspace members (OWNER, ADMIN)
+router.get(
+  '/members',
+  authMiddleware,
+  tenantContextMiddleware,
+  roleMiddleware(['OWNER', 'ADMIN']),
+  tenantController.getMembers
+);
+
+// PATCH /api/v1/tenant/members/:memberId - Update member role (OWNER only)
+router.patch(
+  '/members/:memberId',
+  authMiddleware,
+  tenantContextMiddleware,
+  roleMiddleware(['OWNER']),
+  tenantController.updateMemberRole
+);
+
+// GET /api/v1/tenant/audit-logs - View administrative audit log (OWNER, ADMIN)
+router.get(
+  '/audit-logs',
+  authMiddleware,
+  tenantContextMiddleware,
+  roleMiddleware(['OWNER', 'ADMIN']),
+  tenantController.getAuditLogs
+);
+
 module.exports = router;

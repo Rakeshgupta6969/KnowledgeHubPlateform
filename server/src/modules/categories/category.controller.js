@@ -1,4 +1,5 @@
 const categoryService = require('./category.service');
+const auditService = require('../audit/audit.service');
 
 class CategoryController {
   async list(req, res, next) {
@@ -44,6 +45,17 @@ class CategoryController {
   async archive(req, res, next) {
     try {
       const category = await categoryService.archiveCategory(req.tenant.id, req.params.categoryId);
+
+      // Record audit event
+      await auditService.log(
+        req.tenant.id,
+        req.user.id,
+        'CATEGORY_ARCHIVED',
+        'CATEGORY',
+        category.id,
+        { name: category.name, slug: category.slug }
+      );
+
       res.status(200).json({
         message: 'Category archived successfully',
         category,
