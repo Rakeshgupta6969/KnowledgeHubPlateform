@@ -24,6 +24,7 @@ async function authMiddleware(req, res, next) {
       where: { id: decoded.userId },
       include: {
         memberships: {
+          orderBy: { createdAt: 'asc' },
           include: {
             tenant: true,
           },

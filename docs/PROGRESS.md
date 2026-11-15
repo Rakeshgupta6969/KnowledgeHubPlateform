@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase D Completed** (Articles UI: editor form, list with filters and status badges, preview, safe rendering with XSS sanitization).
-- **Next task: Week 2, Phase E** (Public Help Center: landing page, category pages, and article detail pages by tenant slug).
+- Phase: **Week 2, Phase E Completed** (Public Help Center: landing page, category pages, and article detail pages by tenant slug).
+- **Next task: Week 2, Phase F** (Polish: pagination, sorting, loading/empty/error states, responsive layout, basic accessibility).
 
 ## Completed
+- **Week 2 Phase E (Public Help Center):** Backend public APIs (`/api/v1/public/:tenantSlug`, `/categories`, `/articles`, `/articles/:articleSlug`) resolving active tenant by slug and returning **PUBLISHED** content strictly. Public portal UI with `PublicHelpLayout`, `PublicLandingPage` (hero, topic cards, recent guides), `PublicCategoryPage` (category overview with articles), and `PublicArticleDetailPage` with `SafeContent` XSS sanitization and breadcrumb navigation. Automated tests in `server/tests/public.test.js` verifying published-only visibility, draft/archived 404 privacy, and cross-tenant isolation.
 - **Week 2 Phase D (Articles UI & Safe Rendering):** Built `ArticlesListPage` with status tabs (`ALL`, `DRAFT`, `PUBLISHED`, `ARCHIVED`), category filter, search, badges, pagination, quick preview modal, and action buttons. Built `ArticleEditorPage` with auto-slug generation, category selector, dual-tab Write/Live-Preview, and role-aware publishing. Implemented `SafeContent` with DOMPurify sanitization to block stored XSS.
 - **Week 2 Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
 - **Week 2 Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
@@ -40,6 +41,25 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase E: Public Help Center Portal & Endpoints
+- What was built:
+  - `server/src/modules/public/`: `public.service.js`, `public.controller.js`, `public.routes.js`.
+  - Public APIs: `GET /api/v1/public/:tenantSlug` (tenant metadata & branding), `GET /api/v1/public/:tenantSlug/categories` (active categories with published article counts), `GET /api/v1/public/:tenantSlug/articles` (published articles with category filter and pagination), `GET /api/v1/public/:tenantSlug/articles/:articleSlug` (single published article).
+  - Security & Privacy Non-negotiables: Draft and archived articles strictly return 404 `ARTICLE_NOT_FOUND` to public visitors. Suspended or nonexistent tenants return 404. Sensitive internal fields (user passwords, refresh sessions, draft contents) are never exposed.
+  - Resolved non-deterministic database query bug: Added `orderBy: { createdAt: 'asc' }` to memberships query in `server/src/middleware/auth.js` so user's active tenant ordering remains deterministic across all PostgreSQL sessions.
+  - Customer Help Center UI: `PublicHelpLayout.jsx` with custom tenant primaryColor styling, `PublicLandingPage.jsx` with hero search banner and topic cards, `PublicCategoryPage.jsx` with category article list, and `PublicArticleDetailPage.jsx` with breadcrumbs and safe content rendering.
+  - Automated tests: `server/tests/public.test.js` covering 11 test cases (public branding, category counts, published-only filtering, draft 404, archived 404, and cross-tenant slug isolation).
+- Files added/changed:
+  - `server/src/modules/public/`, `server/src/routes/index.js`, `server/src/middleware/auth.js`, `client/src/features/public/`, `client/src/app/AppRoutes.jsx`, `server/tests/public.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 62 passed tests across all 5 test suites in Jest/Supertest suite (`npm test`).
+  - Client production build succeeded (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - Fixed non-deterministic membership ordering in `auth.js` to ensure reliable workspace defaults when multiple memberships exist.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase D: Articles UI, Editor, Preview, and XSS-Safe Rendering
 - What was built:
   - Installed `dompurify` in `client` package to guarantee safe rendering and strictly eliminate stored XSS.
