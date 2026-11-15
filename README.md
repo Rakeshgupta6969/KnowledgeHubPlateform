@@ -6,14 +6,20 @@
 
 KnowledgeHub enables companies (tenants) to create, manage, and publish customer support help centers with complete tenant data isolation.
 
-This repository implements **Week 1 (Days 1–7)** and **Week 2 (Days 8–14)** of the architecture roadmap:
+This repository implements **Week 1 (Days 1–7)**, **Week 2 (Days 8–14)**, and **Week 3 (Days 15–21)** of the architecture roadmap:
 - **Tenant Isolation:** Tenant context is strictly derived from verified memberships. Queries are scoped by `tenant_id` on every private route.
 - **Tenant Dashboard Shell:** Responsive layout with sidebar, profile, settings, branding management, and a dynamic workspace switcher (rendered only for multi-membership users).
 - **Categories Management:** CRUD operations, per-tenant slug uniqueness, ordering, archiving, and role-based access control (`OWNER`, `ADMIN`, `EDITOR`).
 - **Articles Lifecycle & Management:** Draft, published, and archived states with validated transitions. Parent-child tenant validation prevents cross-tenant category attachment.
 - **Content Safety & Security:** Rich content and markdown are sanitized using DOMPurify (`SafeContent.jsx`) before rendering to eliminate stored XSS.
 - **Public Help Center:** Customer-facing portal resolving tenants by slug (`/help/:tenantSlug`). Strictly displays **PUBLISHED** content only; drafts and archived articles return non-disclosing 404s.
-- **Automated Test Suite:** 62 passed automated tests covering auth, tenant isolation, category/article lifecycles, and negative cross-tenant attacks.
+- **Full-Text Search:** PostgreSQL parameterized full-text search (`to_tsvector`, `plainto_tsquery`, `ts_rank`) on published titles and content, tenant-scoped with category filtering.
+- **Reader Feedback:** Thumbs up/down rating with optional comment, IP-hash abuse prevention, and rate limiting.
+- **Analytics Collection & Dashboard:** Automated article view recording with bot filtering, search query logging, and administrative analytics dashboard with date filters (7d, 30d, 90d, 1y), KPI summary cards, sentiment analysis, top articles ranking, and unanswered search queries.
+- **Redis Caching:** High-performance caching for public tenant branding, category lists, and published articles with tenant-scoped cache keys, custom TTLs, automatic invalidation on updates, and graceful offline fallback.
+- **RBAC Hardening & Audit Logging:** Enforced permissions across all routes (`OWNER`, `ADMIN`, `EDITOR`), member role management, and immutable audit logs for administrative actions.
+- **Rate Limiting:** Protection against abuse on login (10 req/15m), search (30 req/min), and feedback (15 req/15m).
+- **Automated Test Suite:** 106 passed automated integration tests across 11 suites covering search, feedback, analytics, caching, RBAC, rate limiting, and cross-tenant attack prevention.
 
 ---
 
@@ -24,9 +30,11 @@ This repository implements **Week 1 (Days 1–7)** and **Week 2 (Days 8–14)** 
 | **Frontend** | React 18 + Vite | Tailwind CSS, React Router v6, TanStack Query, Lucide icons, DOMPurify |
 | **Backend** | Node.js + Express | CommonJS, modular monolith (`src/modules`, `src/middleware`, `src/utils`) |
 | **Database** | PostgreSQL 16 Alpine | Containerized via Docker Compose, managed with Prisma ORM |
+| **Caching** | Redis 7 Alpine | Containerized via Docker Compose, managed with ioredis with offline fallback |
+| **Rate Limiting** | express-rate-limit | Configured on authentication, search, and reader feedback |
 | **Authentication** | JWT + bcrypt | Short-lived access token (15m) + revocable refresh cookie (7d) |
 | **Validation** | Zod | Server-side request validation with structured error responses |
-| **Testing** | Jest + Supertest | 62 integration tests against isolated test database (`knowledgehub_test`) |
+| **Testing** | Jest + Supertest | 106 integration tests against isolated test database (`knowledgehub_test`) |
 
 ---
 
@@ -112,12 +120,13 @@ Client runs on `http://localhost:5173`.
 
 ## Seed Accounts & Workspaces
 
-Running `npm run seed` creates two isolated demonstration companies:
+Running `npm run seed` creates two isolated demonstration companies with realistic Week 3 analytics:
 
 | Company | Slug | User Role | Email | Password | Help Center URL |
 |---|---|---|---|---|---|
 | **Acme Corp** | `acme` | OWNER | `owner@acme.com` | `Password123!` | `http://localhost:5173/help/acme` |
 | **Acme Corp** | `acme` | ADMIN | `admin@acme.com` | `Password123!` | `http://localhost:5173/help/acme` |
+| **Acme Corp** | `acme` | EDITOR | `editor@acme.com` | `Password123!` | `http://localhost:5173/help/acme` |
 | **Globex Corporation** | `globex` | OWNER | `owner@globex.com` | `Password123!` | `http://localhost:5173/help/globex` |
 
 ---
@@ -125,12 +134,12 @@ Running `npm run seed` creates two isolated demonstration companies:
 ## Running Verification & Tests
 
 ### Automated Backend Tests
-Runs all 5 test suites against the dedicated `knowledgehub_test` database:
+Runs all 11 test suites against the dedicated `knowledgehub_test` database:
 ```bash
 cd server
 npm test
 ```
-Result: 5 test suites, 62 passed tests.
+Result: 11 test suites, 106 passed tests (auth, tenant, category, article, public, search, feedback, analytics, cache, rbac, ratelimit).
 
 ### Code Quality & Linting
 ```bash
