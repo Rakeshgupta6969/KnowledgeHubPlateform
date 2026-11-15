@@ -14,6 +14,7 @@ import {
   Building,
   Shield,
   ChevronDown,
+  BarChart3,
 } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -30,6 +31,9 @@ export default function DashboardLayout() {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Categories', path: '/categories', icon: FolderTree },
     { name: 'Articles', path: '/articles', icon: FileText },
+    ...(currentMembership?.role !== 'EDITOR'
+      ? [{ name: 'Analytics', path: '/analytics', icon: BarChart3 }]
+      : []),
     { name: 'Profile', path: '/profile', icon: User },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];

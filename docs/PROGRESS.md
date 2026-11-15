@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase C Completed** (Analytics collection: article views, bot detection, search logging, aggregate services).
-- **Next task: Week 3 Phase D** (Tenant Analytics Dashboard UI with date filters, summary cards, and tables).
+- Phase: **Week 3 Phase D Completed** (Tenant Analytics Dashboard UI with date filters, summary cards, sentiment gauge, and performance tables).
+- **Next task: Week 3 Phase E** (Redis caching layer for public tenant config, categories, and articles with resilient down-state fallback).
 
 ## Completed
+- **Phase D (Analytics Dashboard UI):** Built full-featured customer intelligence dashboard in `client/src/features/analytics/AnalyticsPage.jsx` with date range selectors (7d, 30d, 90d, 1y), KPI summary cards (Article Views, Search Queries, Helpfulness Score, Unanswered Searches), sentiment gauge breakdown, top articles ranking table, popular search terms table, and actionable zero-result queries with direct "Draft Article" links. Enforced server and client RBAC (`OWNER`/`ADMIN` only; informative lock state for `EDITOR`). Added navigation link in `DashboardLayout.jsx` and registered `/analytics` in `AppRoutes.jsx`.
 - **Phase C (Analytics Data Collection & Aggregation):** Built view collection endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with User-Agent bot filtering (identifying crawlers/bots) and daily session deduplication. Implemented backend `AnalyticsService` with multi-table aggregations for `GET /api/v1/analytics/overview` (views, searches, feedback ratio), `GET /api/v1/analytics/articles` (top articles by view and helpfulness count), and `GET /api/v1/analytics/searches` (popular searches and searches with no results). Enforced strict RBAC (`OWNER`/`ADMIN` only) and multi-tenant scoping. Added 9 automated tests in `tests/analytics.test.js`.
 - **Phase B (Article Feedback & Abuse Controls):** Added `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` accepting boolean `helpful` and optional 1000-char `comment`. Enforced strict tenant scoping, published-only article verification (drafts/archived/cross-tenant return 404), and anonymous SHA-256 IP hashing abuse prevention blocking rapid spam with 429 `FEEDBACK_ALREADY_SUBMITTED`. Integrated interactive feedback widget in `PublicArticleDetailPage.jsx` with rating buttons, optional comment form, thank you state, and localStorage persistence. Added 8 automated tests in `tests/feedback.test.js`.
 - **Phase A (PostgreSQL Full-Text Search & Category Filters):** Implemented parameterized PostgreSQL FTS on published articles using `plainto_tsquery('english', $1)` against `to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))` with `ts_rank` relevance ranking, category filter, and pagination. Bounded and validated search queries (`q` 1-100 characters). Enforced strict tenant scoping and published-only privacy. Updated public landing page with live search, category filter pills, empty states, and error handling. Added 9 automated tests in `tests/search.test.js` covering FTS, category filters, bounds, and negative cross-tenant isolation.
@@ -51,6 +52,22 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase D: Analytics Dashboard UI & Insights
+- What was built:
+  - `client/src/features/analytics/AnalyticsPage.jsx`: Interactive analytics dashboard with date range filter pills (7d, 30d, 90d, 1y), KPI summary cards, sentiment bar gauge, top performing articles table with satisfaction percentages, popular search terms table, and unanswered searches table with quick article creation CTAs.
+  - Role-based UI gating: Editors see informative restricted access banner; sidebar link conditionally displays only for `OWNER` and `ADMIN` roles.
+  - Linked `/analytics` route in `AppRoutes.jsx` and `DashboardLayout.jsx`.
+- Files added/changed:
+  - `client/src/features/analytics/AnalyticsPage.jsx`, `client/src/layouts/DashboardLayout.jsx`, `client/src/app/AppRoutes.jsx`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - All 88 backend tests passing (`npm test`).
+  - Client production build succeeded (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase C: Analytics Collection, Bot Detection & Aggregation
 - What was built:
   - View event endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with regex bot filtering (`/bot|crawl|spider|.../i`) and daily session hash deduplication.

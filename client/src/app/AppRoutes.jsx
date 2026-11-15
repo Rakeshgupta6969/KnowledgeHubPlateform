@@ -11,6 +11,7 @@ import SettingsPage from '../features/tenant/SettingsPage';
 import CategoriesPage from '../features/categories/CategoriesPage';
 import ArticlesListPage from '../features/articles/ArticlesListPage';
 import ArticleEditorPage from '../features/articles/ArticleEditorPage';
+import AnalyticsPage from '../features/analytics/AnalyticsPage';
 
 // Public Help Center
 import PublicHelpLayout from '../features/public/PublicHelpLayout';
@@ -55,6 +56,7 @@ export default function AppRoutes() {
         <Route path="articles" element={<ArticlesListPage />} />
         <Route path="articles/new" element={<ArticleEditorPage />} />
         <Route path="articles/:articleId/edit" element={<ArticleEditorPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
       </Route>
 
       {/* Public customer-facing Help Center routes */}
