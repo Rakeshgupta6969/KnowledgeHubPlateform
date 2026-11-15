@@ -353,6 +353,59 @@ class PublicService {
       },
     };
   }
+
+  async recordArticleView(tenantSlug, articleSlug, userAgent = '', clientIp = '') {
+    const tenant = await this.getPublicTenant(tenantSlug);
+
+    if (!articleSlug) {
+      throw ApiError.badRequest('Article slug is required', 'SLUG_REQUIRED');
+    }
+
+    const article = await prisma.article.findUnique({
+      where: {
+        tenantId_slug: {
+          tenantId: tenant.id,
+          slug: articleSlug.toLowerCase(),
+        },
+      },
+    });
+
+    if (!article || article.status !== 'PUBLISHED') {
+      throw ApiError.notFound('Article not found', 'ARTICLE_NOT_FOUND');
+    }
+
+    // Bot detection based on User-Agent patterns
+    const botPattern = /bot|crawl|spider|slurp|curl|wget|facebookexternalhit|bingbot|googlebot|headless/i;
+    const isBot = botPattern.test(userAgent || '');
+
+    // Deduplicate views from the same IP/User-Agent on the same UTC day
+    const today = new Date().toISOString().slice(0, 10);
+    const sessionHash = crypto
+      .createHash('sha256')
+      .update(`${clientIp}_${userAgent}_${today}`)
+      .digest('hex');
+
+    const existingView = await prisma.articleView.findFirst({
+      where: {
+        tenantId: tenant.id,
+        articleId: article.id,
+        sessionHash,
+      },
+    });
+
+    if (!existingView) {
+      await prisma.articleView.create({
+        data: {
+          tenantId: tenant.id,
+          articleId: article.id,
+          sessionHash,
+          isBot,
+        },
+      });
+    }
+
+    return { success: true };
+  }
 }
 
 module.exports = new PublicService();

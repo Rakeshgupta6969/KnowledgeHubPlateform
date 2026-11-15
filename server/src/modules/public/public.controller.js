@@ -66,6 +66,22 @@ class PublicController {
       next(err);
     }
   }
+
+  async recordView(req, res, next) {
+    try {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      const userAgent = req.headers['user-agent'] || '';
+      const result = await publicService.recordArticleView(
+        req.params.tenantSlug,
+        req.params.articleSlug,
+        userAgent,
+        clientIp
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new PublicController();

@@ -46,6 +46,8 @@ export default function PublicArticleDetailPage() {
       try {
         const res = await apiRequest(`/api/v1/public/${tenantSlug}/articles/${articleSlug}`);
         setArticle(res.article);
+        // Record article view event in background
+        apiRequest(`/api/v1/public/${tenantSlug}/articles/${articleSlug}/view`, { method: 'POST' }).catch(() => {});
       } catch (err) {
         setError(err?.error?.message || 'Article not found');
       } finally {

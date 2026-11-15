@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 3 Phase B Completed** (Article helpful/not-helpful feedback endpoint, abuse controls and UI).
-- **Next task: Week 3 Phase C** (Analytics data collection: article views, bot filtering, search logs and aggregations).
+- Phase: **Week 3 Phase C Completed** (Analytics collection: article views, bot detection, search logging, aggregate services).
+- **Next task: Week 3 Phase D** (Tenant Analytics Dashboard UI with date filters, summary cards, and tables).
 
 ## Completed
+- **Phase C (Analytics Data Collection & Aggregation):** Built view collection endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with User-Agent bot filtering (identifying crawlers/bots) and daily session deduplication. Implemented backend `AnalyticsService` with multi-table aggregations for `GET /api/v1/analytics/overview` (views, searches, feedback ratio), `GET /api/v1/analytics/articles` (top articles by view and helpfulness count), and `GET /api/v1/analytics/searches` (popular searches and searches with no results). Enforced strict RBAC (`OWNER`/`ADMIN` only) and multi-tenant scoping. Added 9 automated tests in `tests/analytics.test.js`.
 - **Phase B (Article Feedback & Abuse Controls):** Added `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` accepting boolean `helpful` and optional 1000-char `comment`. Enforced strict tenant scoping, published-only article verification (drafts/archived/cross-tenant return 404), and anonymous SHA-256 IP hashing abuse prevention blocking rapid spam with 429 `FEEDBACK_ALREADY_SUBMITTED`. Integrated interactive feedback widget in `PublicArticleDetailPage.jsx` with rating buttons, optional comment form, thank you state, and localStorage persistence. Added 8 automated tests in `tests/feedback.test.js`.
 - **Phase A (PostgreSQL Full-Text Search & Category Filters):** Implemented parameterized PostgreSQL FTS on published articles using `plainto_tsquery('english', $1)` against `to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))` with `ts_rank` relevance ranking, category filter, and pagination. Bounded and validated search queries (`q` 1-100 characters). Enforced strict tenant scoping and published-only privacy. Updated public landing page with live search, category filter pills, empty states, and error handling. Added 9 automated tests in `tests/search.test.js` covering FTS, category filters, bounds, and negative cross-tenant isolation.
 - **Phase G (Tests + Wrap-up):** Verified all 7 criteria of the Week 2 checklist in PLAN.md. 62 passed automated tests across 5 test suites. Updated database seed script with categories and articles. Authored complete API reference in `docs/api.md` and updated root `README.md`.
@@ -50,6 +51,24 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase C: Analytics Collection, Bot Detection & Aggregation
+- What was built:
+  - View event endpoint `POST /api/v1/public/:tenantSlug/articles/:articleSlug/view` with regex bot filtering (`/bot|crawl|spider|.../i`) and daily session hash deduplication.
+  - Analytics aggregate service `server/src/modules/analytics/analytics.service.js` calculating overview metrics, top viewed articles with helpfulness ratio, popular search terms, and missing content (searches with zero results).
+  - Controller and routes for `GET /api/v1/analytics/overview`, `GET /api/v1/analytics/articles`, `GET /api/v1/analytics/searches` with `from` and `to` date filters.
+  - RBAC protection: enforced `OWNER` and `ADMIN` access; rejects `EDITOR` with 403.
+  - Background view event recording hooked in `PublicArticleDetailPage.jsx`.
+  - Added 9 automated tests in `server/tests/analytics.test.js` covering views, bot detection, overview metrics, search queries, RBAC, and negative cross-tenant isolation.
+- Files added/changed:
+  - `server/src/middleware/validate.js`, `server/src/modules/public/public.service.js`, `server/src/modules/public/public.controller.js`, `server/src/modules/public/public.routes.js`, `server/src/modules/analytics/`, `server/src/routes/index.js`, `client/src/features/public/PublicArticleDetailPage.jsx`, `server/tests/analytics.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 88 passed tests across 8 test suites in Jest/Supertest suite (`npm test`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 3 Phase B: Article Helpful Feedback & Abuse Controls
 - What was built:
   - Backend API: `POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback` validating `helpful` (boolean) and optional `comment` (max 1000 characters).

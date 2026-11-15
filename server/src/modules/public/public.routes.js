@@ -21,4 +21,7 @@ router.get('/:tenantSlug/articles/:articleSlug', publicController.getArticleBySl
 // POST /api/v1/public/:tenantSlug/articles/:articleSlug/feedback - Submit helpful feedback
 router.post('/:tenantSlug/articles/:articleSlug/feedback', publicController.submitFeedback);
 
+// POST /api/v1/public/:tenantSlug/articles/:articleSlug/view - Record article view
+router.post('/:tenantSlug/articles/:articleSlug/view', publicController.recordView);
+
 module.exports = router;
