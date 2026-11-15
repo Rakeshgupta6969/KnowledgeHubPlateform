@@ -4,11 +4,12 @@
 
 ## Current status
 - Phase: **Week 4 (Quality, Security, Deployment and Final Handoff) in progress**.
-- **Completed: Phase A (API Docs & Standardization)**.
-- **Next task: Phase B (Full Test Pass & Coverage Gaps)**.
-- Test status: **108 passed tests across 12 test suites** (`npm test`), 0 lint warnings (`npm run lint`), client production build successful (`npm run build`).
+- **Completed: Phase A (API Docs & Standardization), Phase B (Full Test Pass & Coverage Gaps)**.
+- **Next task: Phase C (Security Review & Hardening)**.
+- Test status: **132 passed tests** (122 Backend across 13 suites, 10 Frontend across 2 suites), 0 lint warnings (`npm run lint`), client production build successful (`npm run build`).
 
 ## Completed
+- **Week 4 Phase B (Full Test Pass & Coverage Gaps):** Configured Vitest and React Testing Library in `client` with 10 automated component tests (`SafeContent.test.jsx`, `Pagination.test.jsx`) proving stored XSS defense and accessible navigation. Added `server/tests/security_gaps.test.js` covering 14 critical scenarios: token expiration (`TOKEN_EXPIRED`), forged signature rejection (`INVALID_TOKEN`), malformed authorization formats, input boundary validation, `EDITOR` deletion/escalation blocks, and negative cross-tenant isolation for audit logs, members, and analytics. Authored comprehensive test report in `docs/TEST_REPORT.md`.
 - **Week 4 Phase A (API Docs & Standardization):** Installed `swagger-ui-express` and authored complete OpenAPI 3.0.3 specification (`server/src/docs/openapi.json`) documenting all endpoints across Auth, Tenant Workspace, Categories, Articles, Public Help Center, Analytics, and Health with complete request/response schemas, security definitions (Bearer JWT & HttpOnly refresh cookie), and parameters. Mounted interactive Swagger UI at `/api/v1/docs` and `/api/v1/docs/swagger.json`. Standardized pagination across all endpoints: updated `AuditService.listLogs` and `GET /api/v1/tenant/audit-logs` to support `{ data, meta: { total, page, limit, totalPages } }`. Added automated tests in `tests/docs.test.js`.
 - **Phase H (Tests + Wrap-up & Milestone Review):** Verified all 7 criteria of the Week 3 checklist in PLAN.md. Executed full test suite of 106 tests across 11 suites with clean in-band execution. Re-seeded development database with rich demonstration data (feedback, views, searches, audit events, and Acme Editor). Authored complete API reference for Week 3 in `docs/api.md` (search, feedback, view events, analytics, members, audit logs, rate limit headers) and updated root `README.md`.
 - **Phase G (Rate Limiting on Login, Search, and Feedback):** Installed `express-rate-limit` and configured strict rate limiting middleware (`server/src/middleware/rateLimit.js`): 10 login attempts per 15 minutes, 30 search queries per minute, and 15 feedback submissions per 15 minutes. Configured standard 429 response structure `{ error: { code: '..._RATE_LIMIT_EXCEEDED', message: '...' } }`. Configured `trust proxy` in `app.js` and automated test suite in `tests/ratelimit.test.js`.
