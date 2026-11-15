@@ -6,6 +6,9 @@ const router = express.Router({ mergeParams: true });
 // GET /api/v1/public/:tenantSlug - Public tenant branding & metadata
 router.get('/:tenantSlug', publicController.getTenantConfig);
 
+// GET /api/v1/public/:tenantSlug/search - Search published articles
+router.get('/:tenantSlug/search', publicController.searchArticles);
+
 // GET /api/v1/public/:tenantSlug/categories - Public category list with published counts
 router.get('/:tenantSlug/categories', publicController.getCategories);
 

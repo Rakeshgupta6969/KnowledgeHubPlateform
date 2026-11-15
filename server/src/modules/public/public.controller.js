@@ -39,6 +39,18 @@ class PublicController {
       next(err);
     }
   }
+
+  async searchArticles(req, res, next) {
+    try {
+      const result = await publicService.searchPublicArticles(
+        req.params.tenantSlug,
+        req.query
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new PublicController();

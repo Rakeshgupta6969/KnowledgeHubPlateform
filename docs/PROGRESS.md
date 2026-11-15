@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2 (Days 8–14) Fully Completed**.
-- **Next task: Week 3, Day 15** (PostgreSQL Full-Text Search for published articles, search UI and filters).
+- Phase: **Week 3 Phase A Completed** (PostgreSQL Full-Text Search and public category filters).
+- **Next task: Week 3 Phase B** (Article helpful/not-helpful feedback endpoint and UI).
 
 ## Completed
+- **Phase A (PostgreSQL Full-Text Search & Category Filters):** Implemented parameterized PostgreSQL FTS on published articles using `plainto_tsquery('english', $1)` against `to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))` with `ts_rank` relevance ranking, category filter, and pagination. Bounded and validated search queries (`q` 1-100 characters). Enforced strict tenant scoping and published-only privacy. Updated public landing page with live search, category filter pills, empty states, and error handling. Added 9 automated tests in `tests/search.test.js` covering FTS, category filters, bounds, and negative cross-tenant isolation.
 - **Phase G (Tests + Wrap-up):** Verified all 7 criteria of the Week 2 checklist in PLAN.md. 62 passed automated tests across 5 test suites. Updated database seed script with categories and articles. Authored complete API reference in `docs/api.md` and updated root `README.md`.
 - **Phase F (Polish, Pagination & Accessibility):** Reusable accessible `Pagination` component, sorting controls on article tables (Newest, Oldest, Title A-Z, Title Z-A, Recently Updated), responsive layout refinements, proper ARIA labeling for accessibility, enhanced loading skeletons, empty states, and error handling.
 - **Phase E (Public Help Center):** Backend public APIs (`/api/v1/public/:tenantSlug`, `/categories`, `/articles`, `/articles/:articleSlug`) resolving active tenant by slug and returning **PUBLISHED** content strictly. Public portal UI with `PublicHelpLayout`, `PublicLandingPage` (hero, topic cards, recent guides), `PublicCategoryPage` (category overview with articles), and `PublicArticleDetailPage` with `SafeContent` XSS sanitization and breadcrumb navigation. Automated tests in `server/tests/public.test.js` verifying published-only visibility, draft/archived 404 privacy, and cross-tenant isolation.
@@ -48,6 +49,24 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 3 Phase A: PostgreSQL Full-Text Search with Category Filters
+- What was built:
+  - Database schema models for Week 3 added to Prisma (`Feedback`, `ArticleView`, `SearchLog`, `AuditLog`) and migration `20261115103541_add_week3_models` created and deployed.
+  - Parameterized PostgreSQL Full-Text Search service `searchPublicArticles(tenantSlug, queryParams)` using `prisma.$queryRaw`, `to_tsvector`, `plainto_tsquery`, and `ts_rank` with pagination and category filtering.
+  - Public API `GET /api/v1/public/:tenantSlug/search?q=...&category=...` validating query bounds (1-100 chars) and strictly scoping to active tenant and `PUBLISHED` status.
+  - Public Help Center UI updated in `PublicLandingPage.jsx` with debounced search query, category filter pill buttons, result count, and empty states.
+  - Automated tests in `server/tests/search.test.js` covering validation, keyword search, category filtering, draft exclusion, and negative cross-tenant isolation.
+- Files added/changed:
+  - `server/prisma/schema.prisma`, `server/prisma/migrations/20261115103541_add_week3_models/`, `server/tests/setup.js`, `server/src/modules/public/public.validation.js`, `server/src/modules/public/public.service.js`, `server/src/modules/public/public.controller.js`, `server/src/modules/public/public.routes.js`, `client/src/features/public/PublicLandingPage.jsx`, `server/tests/search.test.js`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - 71 passed tests across 6 test suites in Jest/Supertest suite (`npm test`).
+  - Client production build succeeded (`npm run build`).
+  - ESLint passed with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - None.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase G: Tests, Wrap-up & Checklist Verification
 - What was built:
   - Reviewed and confirmed all 7 items of the Week 2 checklist in PLAN.md:

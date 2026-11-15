@@ -54,6 +54,10 @@ model Tenant {
   memberships  Membership[]
   categories   Category[]
   articles     Article[]
+  feedback     Feedback[]
+  articleViews ArticleView[]
+  searchLogs   SearchLog[]
+  auditLogs    AuditLog[]
 
   @@map("tenants")
 }
@@ -70,6 +74,7 @@ model User {
   memberships   Membership[]
   refreshTokens RefreshToken[]
   articles      Article[]
+  auditLogs     AuditLog[]
 
   @@map("users")
 }
@@ -142,9 +147,75 @@ model Article {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  feedback Feedback[]
+  views    ArticleView[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, publishedAt])
   @@index([tenantId, categoryId])
   @@map("articles")
+}
+
+model Feedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  helpful   Boolean
+  comment   String?  @db.Text
+  ipHash    String?  @map("ip_hash") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, articleId])
+  @@index([tenantId, createdAt])
+  @@map("feedback")
+}
+
+model ArticleView {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  articleId   String   @map("article_id") @db.Uuid
+  sessionHash String?  @map("session_hash") @db.VarChar(64)
+  isBot       Boolean  @default(false) @map("is_bot")
+  viewedAt    DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, articleId])
+  @@index([tenantId, viewedAt])
+  @@map("article_views")
+}
+
+model SearchLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  queryText    String   @map("query_text") @db.VarChar(255)
+  resultsCount Int      @map("results_count")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, queryText])
+  @@map("search_logs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  actorUserId  String   @map("actor_user_id") @db.Uuid
+  action       String   @db.VarChar(100)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   String   @map("resource_id") @db.Uuid
+  details      Json?    @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User   @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
 }
