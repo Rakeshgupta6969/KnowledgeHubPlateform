@@ -3,10 +3,11 @@
 > This file is the project's memory. Every new AI session must read it first and update it at the end of every task.
 
 ## Current status
-- Phase: **Week 2, Phase C Completed** (Articles CRUD APIs, draft/published/archived lifecycle, slug generation, cross-tenant category attachment prevention, pagination & predictable sorting).
-- **Next task: Week 2, Phase D** (Articles UI: editor form, list with filters and status badges, preview, safe rendering with XSS sanitization).
+- Phase: **Week 2, Phase D Completed** (Articles UI: editor form, list with filters and status badges, preview, safe rendering with XSS sanitization).
+- **Next task: Week 2, Phase E** (Public Help Center: landing page, category pages, and article detail pages by tenant slug).
 
 ## Completed
+- **Week 2 Phase D (Articles UI & Safe Rendering):** Built `ArticlesListPage` with status tabs (`ALL`, `DRAFT`, `PUBLISHED`, `ARCHIVED`), category filter, search, badges, pagination, quick preview modal, and action buttons. Built `ArticleEditorPage` with auto-slug generation, category selector, dual-tab Write/Live-Preview, and role-aware publishing. Implemented `SafeContent` with DOMPurify sanitization to block stored XSS.
 - **Week 2 Phase C (Articles API):** Article CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/articles`, `POST /api/v1/articles/:articleId/publish`), validated state transitions (`DRAFT` <-> `PUBLISHED` <-> `ARCHIVED`), slug uniqueness per tenant, strict parent-child tenant category validation (`INVALID_CATEGORY` on cross-tenant category attachment), predictable sorting, pagination metadata (`{ data, meta: { total, page, limit, totalPages } }`), and 15 new automated integration & cross-tenant tests.
 - **Week 2 Phase B (Categories Management):** Prisma models for `Category` and `Article`, migrations applied, Category CRUD APIs (`GET/POST/PATCH/DELETE /api/v1/categories`), role enforcement (`OWNER`/`ADMIN` manage, `EDITOR` view), slug uniqueness per tenant, `CategoriesPage` UI with filter tabs, create/edit modal, archive dialog, and 13 new automated integration & cross-tenant tests.
 - **Week 2 Phase A (Dashboard Shell):** `DashboardLayout` with responsive collapsible sidebar, top navigation, dynamic tenant switcher (rendered conditionally only for users with >1 memberships), `OverviewPage`, `ProfilePage`, `SettingsPage` with branding updates, and backend `PATCH /api/v1/tenant/current` with RBAC enforcement (`OWNER`/`ADMIN`).
@@ -39,6 +40,24 @@
 _None._
 
 ## Task log (newest first)
+### 2026-11-15, Week 2 Phase D: Articles UI, Editor, Preview, and XSS-Safe Rendering
+- What was built:
+  - Installed `dompurify` in `client` package to guarantee safe rendering and strictly eliminate stored XSS.
+  - `client/src/components/SafeContent.jsx`: Markdown parser with DOMPurify sanitization allowing only safe HTML elements and attributes.
+  - `client/src/features/articles/ArticlesListPage.jsx`: Full-featured article management interface with status tabs, category dropdown, real-time title search, status badges, pagination, preview modal, and role-based action buttons (`Edit`, `Publish`, `Archive`).
+  - `client/src/features/articles/ArticleEditorPage.jsx`: Authoring interface with title, auto-slug generation & manual override, category selection, excerpt, content editor, and dual-tab live preview using `SafeContent`.
+  - Configured client routing in `AppRoutes.jsx` for `/articles`, `/articles/new`, and `/articles/:articleId/edit`.
+- Files added/changed:
+  - `client/package.json`, `client/package-lock.json`, `client/src/components/SafeContent.jsx`, `client/src/features/articles/ArticlesListPage.jsx`, `client/src/features/articles/ArticleEditorPage.jsx`, `client/src/app/AppRoutes.jsx`, `docs/PROGRESS.md`.
+- Tests added / status:
+  - All 51 backend tests passing (`npm test`).
+  - Client production build succeeded with 0 errors (`npm run build`).
+  - ESLint passing with 0 warnings (`npm run lint`).
+- Decisions or deviations from PLAN.md:
+  - Installed `dompurify` specifically to satisfy the strict non-negotiable XSS prevention requirement.
+- Open issues:
+  - None.
+
 ### 2026-11-15, Week 2 Phase C: Articles API, Lifecycle, State Transitions & Cross-Tenant Validation
 - What was built:
   - `server/src/modules/articles/`: `article.validation.js`, `article.service.js`, `article.controller.js`, `article.routes.js`.

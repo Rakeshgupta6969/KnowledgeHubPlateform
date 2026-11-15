@@ -9,6 +9,8 @@ import OverviewPage from '../features/tenant/OverviewPage';
 import ProfilePage from '../features/tenant/ProfilePage';
 import SettingsPage from '../features/tenant/SettingsPage';
 import CategoriesPage from '../features/categories/CategoriesPage';
+import ArticlesListPage from '../features/articles/ArticlesListPage';
+import ArticleEditorPage from '../features/articles/ArticleEditorPage';
 
 export default function AppRoutes() {
   return (
@@ -44,18 +46,9 @@ export default function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
-        <Route
-          path="articles"
-          element={<div className="p-8 text-gray-500">Articles management loading...</div>}
-        />
-        <Route
-          path="articles/new"
-          element={<div className="p-8 text-gray-500">New article editor loading...</div>}
-        />
-        <Route
-          path="articles/:articleId/edit"
-          element={<div className="p-8 text-gray-500">Article editor loading...</div>}
-        />
+        <Route path="articles" element={<ArticlesListPage />} />
+        <Route path="articles/new" element={<ArticleEditorPage />} />
+        <Route path="articles/:articleId/edit" element={<ArticleEditorPage />} />
       </Route>
 
       {/* Public customer-facing Help Center routes (will be populated in Phase E) */}
